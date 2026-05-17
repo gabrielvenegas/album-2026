@@ -3,19 +3,19 @@ import { Camera, CheckCircle, RefreshCcw, XCircle } from "lucide-react";
 import { useCollection } from "@/store/useCollection";
 import { scanStickersFromImage } from "@/lib/ai";
 
-const MOTION_SAMPLE_WIDTH = 48;
-const MOTION_SAMPLE_HEIGHT = 64;
-const MOTION_THRESHOLD = 16;
-const STABLE_CAPTURE_MS = 650;
+const DETECTION_SAMPLE_WIDTH = 72;
+const DETECTION_SAMPLE_HEIGHT = 96;
+const CARD_CAPTURE_MS = 500;
+const MIN_CARD_AREA_RATIO = 0.16;
+const MAX_CARD_AREA_RATIO = 0.9;
 
 export function Scanner() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const motionCanvasRef = useRef<HTMLCanvasElement>(null);
+  const detectionCanvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const animationRef = useRef<number | null>(null);
-  const lastFrameRef = useRef<Uint8ClampedArray | null>(null);
-  const stableSinceRef = useRef<number | null>(null);
+  const cardSinceRef = useRef<number | null>(null);
   const autoCaptureLockedRef = useRef(false);
   const previewRef = useRef("");
   const scanningRef = useRef(false);
@@ -33,7 +33,7 @@ export function Scanner() {
   useEffect(() => {
     startCamera();
     return () => {
-      stopMotionDetection();
+      stopCardDetection();
       stopCamera();
     };
   }, []);
@@ -42,8 +42,7 @@ export function Scanner() {
     previewRef.current = preview;
     if (!preview) {
       autoCaptureLockedRef.current = false;
-      stableSinceRef.current = null;
-      lastFrameRef.current = null;
+      cardSinceRef.current = null;
     }
   }, [preview]);
 
@@ -84,7 +83,7 @@ export function Scanner() {
         await videoRef.current.play();
       }
       setCameraReady(true);
-      startMotionDetection();
+      startCardDetection();
     } catch {
       setCameraError("Permita o acesso à câmera para escanear figurinhas.");
     }
@@ -95,71 +94,104 @@ export function Scanner() {
     streamRef.current = null;
   }
 
-  function startMotionDetection() {
-    stopMotionDetection();
-    lastFrameRef.current = null;
-    stableSinceRef.current = null;
+  function startCardDetection() {
+    stopCardDetection();
+    cardSinceRef.current = null;
 
     const tick = (now: number) => {
-      detectStableFrame(now);
+      detectCardFrame(now);
       animationRef.current = requestAnimationFrame(tick);
     };
 
     animationRef.current = requestAnimationFrame(tick);
   }
 
-  function stopMotionDetection() {
+  function stopCardDetection() {
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
       animationRef.current = null;
     }
   }
 
-  function detectStableFrame(now: number) {
+  function detectCardFrame(now: number) {
     if (
       !cameraReadyRef.current ||
       previewRef.current ||
       scanningRef.current ||
       autoCaptureLockedRef.current
     ) {
-      stableSinceRef.current = null;
-      lastFrameRef.current = null;
+      cardSinceRef.current = null;
       return;
     }
 
     const video = videoRef.current;
-    const canvas = motionCanvasRef.current;
+    const canvas = detectionCanvasRef.current;
     if (!video || !canvas || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
       return;
     }
 
-    canvas.width = MOTION_SAMPLE_WIDTH;
-    canvas.height = MOTION_SAMPLE_HEIGHT;
+    canvas.width = DETECTION_SAMPLE_WIDTH;
+    canvas.height = DETECTION_SAMPLE_HEIGHT;
     const ctx = canvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) return;
 
-    ctx.drawImage(video, 0, 0, MOTION_SAMPLE_WIDTH, MOTION_SAMPLE_HEIGHT);
-    const frame = ctx.getImageData(0, 0, MOTION_SAMPLE_WIDTH, MOTION_SAMPLE_HEIGHT).data;
-    const lastFrame = lastFrameRef.current;
-    lastFrameRef.current = new Uint8ClampedArray(frame);
+    ctx.drawImage(video, 0, 0, DETECTION_SAMPLE_WIDTH, DETECTION_SAMPLE_HEIGHT);
+    const frame = ctx.getImageData(0, 0, DETECTION_SAMPLE_WIDTH, DETECTION_SAMPLE_HEIGHT).data;
 
-    if (!lastFrame) return;
-
-    let diff = 0;
-    for (let i = 0; i < frame.length; i += 16) {
-      diff += Math.abs(frame[i] - lastFrame[i]);
-    }
-
-    const averageDiff = diff / (frame.length / 16);
-    if (averageDiff < MOTION_THRESHOLD) {
-      stableSinceRef.current ??= now;
-      if (now - stableSinceRef.current >= STABLE_CAPTURE_MS) {
+    if (hasStickerLikeRectangle(frame)) {
+      cardSinceRef.current ??= now;
+      if (now - cardSinceRef.current >= CARD_CAPTURE_MS) {
         autoCaptureLockedRef.current = true;
         void captureAndScan();
       }
     } else {
-      stableSinceRef.current = null;
+      cardSinceRef.current = null;
     }
+  }
+
+  function hasStickerLikeRectangle(frame: Uint8ClampedArray): boolean {
+    let minX = DETECTION_SAMPLE_WIDTH;
+    let minY = DETECTION_SAMPLE_HEIGHT;
+    let maxX = -1;
+    let maxY = -1;
+    let brightPixels = 0;
+
+    for (let y = 0; y < DETECTION_SAMPLE_HEIGHT; y++) {
+      for (let x = 0; x < DETECTION_SAMPLE_WIDTH; x++) {
+        const i = (y * DETECTION_SAMPLE_WIDTH + x) * 4;
+        const r = frame[i];
+        const g = frame[i + 1];
+        const b = frame[i + 2];
+        const brightness = (r + g + b) / 3;
+        const contrast = Math.max(r, g, b) - Math.min(r, g, b);
+
+        if (brightness > 95 && contrast < 95) {
+          brightPixels++;
+          if (x < minX) minX = x;
+          if (y < minY) minY = y;
+          if (x > maxX) maxX = x;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+
+    if (brightPixels < 80 || maxX < minX || maxY < minY) return false;
+
+    const width = maxX - minX + 1;
+    const height = maxY - minY + 1;
+    const area = width * height;
+    const frameArea = DETECTION_SAMPLE_WIDTH * DETECTION_SAMPLE_HEIGHT;
+    const areaRatio = area / frameArea;
+    const fillRatio = brightPixels / area;
+    const aspectRatio = height / width;
+
+    return (
+      areaRatio >= MIN_CARD_AREA_RATIO &&
+      areaRatio <= MAX_CARD_AREA_RATIO &&
+      fillRatio >= 0.35 &&
+      aspectRatio >= 0.8 &&
+      aspectRatio <= 2.4
+    );
   }
 
   async function captureAndScan() {
@@ -209,8 +241,7 @@ export function Scanner() {
     setPreview("");
     previewRef.current = "";
     autoCaptureLockedRef.current = false;
-    stableSinceRef.current = null;
-    lastFrameRef.current = null;
+    cardSinceRef.current = null;
     setDetected([]);
     setSelected(new Set());
   }
@@ -273,12 +304,12 @@ export function Scanner() {
           </div>
 
           <canvas ref={canvasRef} className="hidden" />
-          <canvas ref={motionCanvasRef} className="hidden" />
+          <canvas ref={detectionCanvasRef} className="hidden" />
 
           {!preview ? (
             <div className="space-y-2">
               <p className="text-xs text-muted text-center">
-                Segure a câmera parada para capturar automaticamente.
+                A captura acontece automaticamente quando uma figurinha entra no quadro.
               </p>
               <button
                 onClick={captureAndScan}
