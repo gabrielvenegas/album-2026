@@ -1,6 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Check, Square, RotateCcw } from "lucide-react";
-import { getCountryByCode, getStickerCode } from "@/data/album";
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, Square, RotateCcw } from "lucide-react";
+import { COUNTRIES, getCountryByCode, getStickerCode } from "@/data/album";
 import { useCollection, useCountryStats } from "@/store/useCollection";
 import { StickerChip } from "@/components/StickerChip";
 import { useState } from "react";
@@ -27,6 +27,12 @@ export function CountryDetail() {
   const { owned, duplicates, missing } = useCountryStats(codes);
   const total = country.stickers.length;
   const pct = Math.round((owned / total) * 100);
+  const countryIndex = COUNTRIES.findIndex((c) => c.code === country.code);
+  const previousCountry = countryIndex > 0 ? COUNTRIES[countryIndex - 1] : undefined;
+  const nextCountry =
+    countryIndex >= 0 && countryIndex < COUNTRIES.length - 1
+      ? COUNTRIES[countryIndex + 1]
+      : undefined;
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
@@ -59,6 +65,25 @@ export function CountryDetail() {
           </span>
           <span>{duplicates > 0 ? `${duplicates} repetidas` : ""}</span>
           <span>{missing > 0 ? `${missing} faltando` : "Completa!"}</span>
+        </div>
+
+        <div className="flex gap-2 mt-3">
+          <button
+            onClick={() => previousCountry && navigate(`/paises/${previousCountry.code}`)}
+            disabled={!previousCountry}
+            className="chip-press flex-1 bg-surface border border-border text-muted text-xs font-semibold rounded-xl py-2.5 flex items-center justify-center gap-1 disabled:opacity-35"
+          >
+            <ChevronLeft size={14} />
+            {previousCountry ? previousCountry.code : "Anterior"}
+          </button>
+          <button
+            onClick={() => nextCountry && navigate(`/paises/${nextCountry.code}`)}
+            disabled={!nextCountry}
+            className="chip-press flex-1 bg-surface border border-border text-muted text-xs font-semibold rounded-xl py-2.5 flex items-center justify-center gap-1 disabled:opacity-35"
+          >
+            {nextCountry ? nextCountry.code : "Próximo"}
+            <ChevronRight size={14} />
+          </button>
         </div>
       </div>
 
