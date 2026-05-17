@@ -5,7 +5,7 @@
 :root {
   color-scheme: dark;
   --tabbar-content-height: 68px;
-  --tabbar-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --tabbar-safe-bottom: max(env(safe-area-inset-bottom, 0px), 34px);
   --tabbar-height: calc(var(--tabbar-content-height) + var(--tabbar-safe-bottom));
 }
 
@@ -46,8 +46,6 @@ body {
   inset: 0;
   display: flex;
   flex-direction: column;
-  height: 100dvh;
-  min-height: -webkit-fill-available;
   background: #080c0a;
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: var(--tabbar-height);
@@ -55,7 +53,7 @@ body {
 }
 
 .bottom-nav {
-  position: fixed;
+  position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
