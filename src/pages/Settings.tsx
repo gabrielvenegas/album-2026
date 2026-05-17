@@ -8,6 +8,7 @@ export function Settings() {
   const [keyInput, setKeyInput] = useState(apiKey)
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<'ok' | 'fail' | null>(null)
+  const [testError, setTestError] = useState('')
   const [confirmReset, setConfirmReset] = useState(false)
   const [toast, setToast] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
@@ -21,6 +22,7 @@ export function Settings() {
     setApiKey(keyInput.trim())
     showToast('Chave salva!')
     setTestResult(null)
+    setTestError('')
   }
 
   async function handleTestConnection() {
@@ -28,11 +30,14 @@ export function Settings() {
     if (!key) { showToast('Insira uma chave de API primeiro.'); return }
     setTesting(true)
     setTestResult(null)
+    setTestError('')
     try {
       const ok = await testConnection(key)
       setTestResult(ok ? 'ok' : 'fail')
-    } catch {
+      if (!ok) setTestError('A API respondeu, mas não retornou o OK esperado.')
+    } catch (err) {
       setTestResult('fail')
+      setTestError(err instanceof Error ? err.message : 'Falha na conexão.')
     } finally {
       setTesting(false)
     }
@@ -104,6 +109,11 @@ export function Settings() {
               : <><XCircle size={13} /> Falha. Verifique a chave.</>
             }
           </div>
+        )}
+        {testError && (
+          <p className="mt-2 break-words text-center text-xs text-red-400">
+            {testError}
+          </p>
         )}
       </Section>
 

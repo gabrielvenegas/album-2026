@@ -1,37 +1,65 @@
 import { COUNTRIES, getStickerCode } from '@/data/album'
 
 const BASE_URL = 'https://api.mulerouter.ai/vendors/openai/v1'
-const TEXT_MODEL = 'gpt-4.1-nano'
-const VISION_MODEL = 'gpt-4.1-nano'
+const TEXT_MODEL = 'qwen-flash'
+const VISION_MODEL = 'qwen3-vl-flash'
 const VALID_STICKER_CODES = new Set(
   COUNTRIES.flatMap(country => country.stickers.map(sticker => getStickerCode(country.code, sticker.number)))
 )
 const VALID_PREFIXES = COUNTRIES.map(country => country.code).join(', ')
+
+class AiRequestError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message)
+  }
+}
 
 async function chat(
   apiKey: string,
   messages: { role: string; content: unknown }[],
   options: { model?: string; maxTokens?: number } = {}
 ): Promise<string> {
+  return chatWithModel(apiKey, messages, options.model ?? TEXT_MODEL, options.maxTokens)
+}
+
+async function chatWithModel(
+  apiKey: string,
+  messages: { role: string; content: unknown }[],
+  model: string,
+  maxTokens = 500
+): Promise<string> {
   const res = await fetch(`${BASE_URL}/chat/completions`, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${apiKey}`,
+      'Authorization': `Bearer ${normalizeApiKey(apiKey)}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: options.model ?? TEXT_MODEL,
+      model,
       messages,
       temperature: 0,
-      max_tokens: options.maxTokens ?? 500,
+      max_tokens: maxTokens,
     }),
   })
   if (!res.ok) {
     const err = await res.text().catch(() => res.statusText)
-    throw new Error(err)
+    throw new AiRequestError(cleanApiError(err), res.status)
   }
   const data = await res.json() as { choices: { message: { content: string } }[] }
   return data.choices[0]?.message?.content ?? ''
+}
+
+function normalizeApiKey(apiKey: string): string {
+  return apiKey.trim().replace(/^Bearer\s+/i, '')
+}
+
+function cleanApiError(error: string): string {
+  try {
+    const parsed = JSON.parse(error) as { error?: { message?: string }; message?: string }
+    return parsed.error?.message ?? parsed.message ?? error
+  } catch {
+    return error
+  }
 }
 
 export async function testConnection(apiKey: string): Promise<boolean> {
@@ -39,7 +67,7 @@ export async function testConnection(apiKey: string): Promise<boolean> {
     { role: 'system', content: 'Responda apenas com: OK' },
     { role: 'user', content: 'Teste de conexão' },
   ])
-  return reply.trim().startsWith('OK')
+  return /\bOK\b/i.test(reply.trim())
 }
 
 export async function scanStickersFromImage(apiKey: string, base64Image: string): Promise<string[]> {
@@ -61,7 +89,7 @@ Se não encontrar nenhuma figurinha, retorne: []`,
       content: [
         {
           type: 'image_url',
-          image_url: { url: base64Image, detail: 'high' },
+          image_url: { url: base64Image },
         },
         {
           type: 'text',
