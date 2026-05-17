@@ -11,24 +11,19 @@
   box-sizing: border-box;
 }
 
-html {
-  /* background fills the status-bar zone on iOS PWA */
+html, body {
+  /* background fills the status-bar and home-indicator zones */
   background: #080c0a;
-  height: 100%;
+  overscroll-behavior: none;
 }
 
 body {
-  height: 100%;
-  background: #080c0a;
   color: #f0fdf4;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  overscroll-behavior: none;
-  overflow: hidden;
 }
 
+/* App container uses position:fixed so #root just needs to exist */
 #root {
-  height: 100%;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
