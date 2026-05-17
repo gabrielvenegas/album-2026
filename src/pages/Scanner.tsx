@@ -5,8 +5,8 @@ import { scanStickersFromImage } from "@/lib/ai";
 
 const MOTION_SAMPLE_WIDTH = 48;
 const MOTION_SAMPLE_HEIGHT = 64;
-const MOTION_THRESHOLD = 8;
-const STABLE_CAPTURE_MS = 900;
+const MOTION_THRESHOLD = 16;
+const STABLE_CAPTURE_MS = 650;
 
 export function Scanner() {
   const videoRef = useRef<HTMLVideoElement>(null);
