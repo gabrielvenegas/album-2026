@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { Camera, CheckCircle, RefreshCcw, XCircle } from "lucide-react";
+import type { CV } from "@techstark/opencv-js";
 import { useCollection } from "@/store/useCollection";
 import { scanStickersFromImage } from "@/lib/ai";
 
-const DETECTION_SAMPLE_WIDTH = 72;
-const DETECTION_SAMPLE_HEIGHT = 96;
+const DETECTION_SAMPLE_WIDTH = 180;
+const DETECTION_SAMPLE_HEIGHT = 240;
 const CARD_CAPTURE_MS = 350;
-const MIN_CARD_AREA_RATIO = 0.06;
+const MIN_CARD_AREA_RATIO = 0.08;
 const MAX_CARD_AREA_RATIO = 0.9;
 
 export function Scanner() {
@@ -16,6 +17,7 @@ export function Scanner() {
   const streamRef = useRef<MediaStream | null>(null);
   const animationRef = useRef<number | null>(null);
   const cardSinceRef = useRef<number | null>(null);
+  const cvRef = useRef<CV | null>(null);
   const autoCaptureLockedRef = useRef(false);
   const previewRef = useRef("");
   const scanningRef = useRef(false);
@@ -25,6 +27,7 @@ export function Scanner() {
   const [cameraError, setCameraError] = useState("");
   const [scanning, setScanning] = useState(false);
   const [cardDetected, setCardDetected] = useState(false);
+  const [cvReady, setCvReady] = useState(false);
   const [detected, setDetected] = useState<string[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState("");
@@ -32,12 +35,24 @@ export function Scanner() {
   const { apiKey, markMultiple } = useCollection();
 
   useEffect(() => {
+    void loadOpenCv();
     startCamera();
     return () => {
       stopCardDetection();
       stopCamera();
     };
   }, []);
+
+  async function loadOpenCv() {
+    try {
+      const cvModule = await import("@techstark/opencv-js");
+      const cvReady = (cvModule.default ?? cvModule) as CV | Promise<CV>;
+      cvRef.current = await Promise.resolve(cvReady);
+      setCvReady(true);
+    } catch {
+      setCameraError("Não foi possível carregar o detector da câmera.");
+    }
+  }
 
   useEffect(() => {
     previewRef.current = preview;
@@ -117,6 +132,7 @@ export function Scanner() {
   function detectCardFrame(now: number) {
     if (
       !cameraReadyRef.current ||
+      !cvRef.current ||
       previewRef.current ||
       scanningRef.current ||
       autoCaptureLockedRef.current
@@ -137,9 +153,9 @@ export function Scanner() {
     if (!ctx) return;
 
     ctx.drawImage(video, 0, 0, DETECTION_SAMPLE_WIDTH, DETECTION_SAMPLE_HEIGHT);
-    const frame = ctx.getImageData(0, 0, DETECTION_SAMPLE_WIDTH, DETECTION_SAMPLE_HEIGHT).data;
+    const imageData = ctx.getImageData(0, 0, DETECTION_SAMPLE_WIDTH, DETECTION_SAMPLE_HEIGHT);
 
-    const hasCard = hasStickerLikeRectangle(frame);
+    const hasCard = hasStickerLikeRectangle(imageData);
     setCardDetected(hasCard);
 
     if (hasCard) {
@@ -153,49 +169,68 @@ export function Scanner() {
     }
   }
 
-  function hasStickerLikeRectangle(frame: Uint8ClampedArray): boolean {
-    let minX = DETECTION_SAMPLE_WIDTH;
-    let minY = DETECTION_SAMPLE_HEIGHT;
-    let maxX = -1;
-    let maxY = -1;
-    let brightPixels = 0;
+  function hasStickerLikeRectangle(imageData: ImageData): boolean {
+    const cv = cvRef.current;
+    if (!cv) return false;
 
-    for (let y = 0; y < DETECTION_SAMPLE_HEIGHT; y++) {
-      for (let x = 0; x < DETECTION_SAMPLE_WIDTH; x++) {
-        const i = (y * DETECTION_SAMPLE_WIDTH + x) * 4;
-        const r = frame[i];
-        const g = frame[i + 1];
-        const b = frame[i + 2];
-        const brightness = (r + g + b) / 3;
-        const contrast = Math.max(r, g, b) - Math.min(r, g, b);
+    const src = cv.matFromImageData(imageData);
+    const gray = new cv.Mat();
+    const blurred = new cv.Mat();
+    const edges = new cv.Mat();
+    const dilated = new cv.Mat();
+    const contours = new cv.MatVector();
+    const hierarchy = new cv.Mat();
+    const kernel = cv.getStructuringElement(
+      cv.MORPH_RECT,
+      new cv.Size(3, 3),
+    );
+    let found = false;
 
-        if (brightness > 65 && contrast < 140) {
-          brightPixels++;
-          if (x < minX) minX = x;
-          if (y < minY) minY = y;
-          if (x > maxX) maxX = x;
-          if (y > maxY) maxY = y;
+    try {
+      cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+      cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0);
+      cv.Canny(blurred, edges, 35, 120);
+      cv.dilate(edges, dilated, kernel);
+      cv.findContours(
+        dilated,
+        contours,
+        hierarchy,
+        cv.RETR_LIST,
+        cv.CHAIN_APPROX_SIMPLE,
+      );
+
+      const frameArea = DETECTION_SAMPLE_WIDTH * DETECTION_SAMPLE_HEIGHT;
+      for (let i = 0; i < contours.size(); i++) {
+        const contour = contours.get(i);
+        const approx = new cv.Mat();
+        const area = cv.contourArea(contour);
+        const areaRatio = area / frameArea;
+
+        if (areaRatio >= MIN_CARD_AREA_RATIO && areaRatio <= MAX_CARD_AREA_RATIO) {
+          const perimeter = cv.arcLength(contour, true);
+          cv.approxPolyDP(contour, approx, 0.04 * perimeter, true);
+
+          if (approx.rows === 4) {
+            found = true;
+          }
         }
+
+        contour.delete();
+        approx.delete();
+        if (found) break;
       }
+    } finally {
+      src.delete();
+      gray.delete();
+      blurred.delete();
+      edges.delete();
+      dilated.delete();
+      contours.delete();
+      hierarchy.delete();
+      kernel.delete();
     }
 
-    if (brightPixels < 45 || maxX < minX || maxY < minY) return false;
-
-    const width = maxX - minX + 1;
-    const height = maxY - minY + 1;
-    const area = width * height;
-    const frameArea = DETECTION_SAMPLE_WIDTH * DETECTION_SAMPLE_HEIGHT;
-    const areaRatio = area / frameArea;
-    const fillRatio = brightPixels / area;
-    const aspectRatio = height / width;
-
-    return (
-      areaRatio >= MIN_CARD_AREA_RATIO &&
-      areaRatio <= MAX_CARD_AREA_RATIO &&
-      fillRatio >= 0.35 &&
-      aspectRatio >= 0.55 &&
-      aspectRatio <= 3.2
-    );
+    return found;
   }
 
   async function captureAndScan() {
@@ -315,7 +350,11 @@ export function Scanner() {
                     : "bg-bg/75 text-muted"
                 }`}
               >
-                {cardDetected ? "Figurinha detectada" : "Procurando figurinha"}
+                {cardDetected
+                  ? "Figurinha detectada"
+                  : cvReady
+                    ? "Procurando figurinha"
+                    : "Carregando detector"}
               </div>
             )}
           </div>
