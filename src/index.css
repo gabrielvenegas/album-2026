@@ -11,24 +11,32 @@
   box-sizing: border-box;
 }
 
-html, body, #root {
+html {
+  /* background fills the status-bar zone on iOS PWA */
+  background: #080c0a;
   height: 100%;
-  overflow: hidden;
 }
 
 body {
+  height: 100%;
   background: #080c0a;
   color: #f0fdf4;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   overscroll-behavior: none;
+  overflow: hidden;
 }
 
 #root {
+  height: 100%;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
-/* Safe area support */
+/* Safe area helpers */
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }

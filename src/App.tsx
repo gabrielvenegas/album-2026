@@ -11,6 +11,8 @@ export default function App() {
   return (
     <BrowserRouter>
       <div className="flex flex-col h-full bg-bg">
+        {/* Top safe-area bar — fills the status bar zone with the app background */}
+        <div className="flex-none bg-bg pt-safe" />
         <div className="flex-1 flex flex-col min-h-0">
           <Routes>
             <Route path="/" element={<Dashboard />} />

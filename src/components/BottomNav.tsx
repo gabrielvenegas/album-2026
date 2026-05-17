@@ -15,7 +15,10 @@ export function BottomNav() {
   const active = TABS.find(t => t.path !== '/' ? location.pathname.startsWith(t.path) : location.pathname === '/')
 
   return (
-    <nav className="bg-surface border-t border-border flex-none pb-safe">
+    <nav
+      className="bg-surface border-t border-border flex-none"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+    >
       <div className="flex">
         {TABS.map(tab => {
           const isActive = tab === active
