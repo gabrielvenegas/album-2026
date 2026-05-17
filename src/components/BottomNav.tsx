@@ -15,18 +15,15 @@ export function BottomNav() {
   const active = TABS.find(t => t.path !== '/' ? location.pathname.startsWith(t.path) : location.pathname === '/')
 
   return (
-    <nav
-      className="bg-surface border-t border-border flex-none"
-      style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 10px)' }}
-    >
-      <div className="flex">
+    <nav className="bottom-nav border-t border-border">
+      <div className="bottom-nav-items flex">
         {TABS.map(tab => {
           const isActive = tab === active
           return (
             <button
               key={tab.path}
               onClick={() => navigate(tab.path)}
-              className={`flex-1 flex flex-col items-center justify-center gap-1 pt-3 pb-2 transition-colors ${
+              className={`flex-1 flex flex-col items-center justify-center gap-1 transition-colors ${
                 isActive ? 'text-gold' : 'text-muted'
               }`}
             >

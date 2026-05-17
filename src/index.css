@@ -4,6 +4,9 @@
 
 :root {
   color-scheme: dark;
+  --tabbar-content-height: 68px;
+  --tabbar-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --tabbar-height: calc(var(--tabbar-content-height) + var(--tabbar-safe-bottom));
 }
 
 * {
@@ -17,6 +20,10 @@ body,
   width: 100%;
   height: 100%;
   margin: 0;
+}
+
+html {
+  height: -webkit-fill-available;
 }
 
 html, body {
@@ -39,9 +46,27 @@ body {
   inset: 0;
   display: flex;
   flex-direction: column;
-  min-height: 100svh;
+  height: 100dvh;
+  min-height: -webkit-fill-available;
   background: #080c0a;
   padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: var(--tabbar-height);
+  overflow: hidden;
+}
+
+.bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  height: var(--tabbar-height);
+  padding-bottom: var(--tabbar-safe-bottom);
+  background: #111816;
+}
+
+.bottom-nav-items {
+  height: var(--tabbar-content-height);
 }
 
 .toast-safe {
