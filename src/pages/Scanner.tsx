@@ -5,8 +5,8 @@ import { scanStickersFromImage } from "@/lib/ai";
 
 const DETECTION_SAMPLE_WIDTH = 72;
 const DETECTION_SAMPLE_HEIGHT = 96;
-const CARD_CAPTURE_MS = 500;
-const MIN_CARD_AREA_RATIO = 0.16;
+const CARD_CAPTURE_MS = 350;
+const MIN_CARD_AREA_RATIO = 0.06;
 const MAX_CARD_AREA_RATIO = 0.9;
 
 export function Scanner() {
@@ -24,6 +24,7 @@ export function Scanner() {
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState("");
   const [scanning, setScanning] = useState(false);
+  const [cardDetected, setCardDetected] = useState(false);
   const [detected, setDetected] = useState<string[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState("");
@@ -138,7 +139,10 @@ export function Scanner() {
     ctx.drawImage(video, 0, 0, DETECTION_SAMPLE_WIDTH, DETECTION_SAMPLE_HEIGHT);
     const frame = ctx.getImageData(0, 0, DETECTION_SAMPLE_WIDTH, DETECTION_SAMPLE_HEIGHT).data;
 
-    if (hasStickerLikeRectangle(frame)) {
+    const hasCard = hasStickerLikeRectangle(frame);
+    setCardDetected(hasCard);
+
+    if (hasCard) {
       cardSinceRef.current ??= now;
       if (now - cardSinceRef.current >= CARD_CAPTURE_MS) {
         autoCaptureLockedRef.current = true;
@@ -165,7 +169,7 @@ export function Scanner() {
         const brightness = (r + g + b) / 3;
         const contrast = Math.max(r, g, b) - Math.min(r, g, b);
 
-        if (brightness > 95 && contrast < 95) {
+        if (brightness > 65 && contrast < 140) {
           brightPixels++;
           if (x < minX) minX = x;
           if (y < minY) minY = y;
@@ -175,7 +179,7 @@ export function Scanner() {
       }
     }
 
-    if (brightPixels < 80 || maxX < minX || maxY < minY) return false;
+    if (brightPixels < 45 || maxX < minX || maxY < minY) return false;
 
     const width = maxX - minX + 1;
     const height = maxY - minY + 1;
@@ -189,8 +193,8 @@ export function Scanner() {
       areaRatio >= MIN_CARD_AREA_RATIO &&
       areaRatio <= MAX_CARD_AREA_RATIO &&
       fillRatio >= 0.35 &&
-      aspectRatio >= 0.8 &&
-      aspectRatio <= 2.4
+      aspectRatio >= 0.55 &&
+      aspectRatio <= 3.2
     );
   }
 
@@ -242,6 +246,7 @@ export function Scanner() {
     previewRef.current = "";
     autoCaptureLockedRef.current = false;
     cardSinceRef.current = null;
+    setCardDetected(false);
     setDetected([]);
     setSelected(new Set());
   }
@@ -299,6 +304,18 @@ export function Scanner() {
                 >
                   Tentar novamente
                 </button>
+              </div>
+            )}
+
+            {!preview && !cameraError && (
+              <div
+                className={`absolute left-3 top-3 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                  cardDetected
+                    ? "bg-owned text-white"
+                    : "bg-bg/75 text-muted"
+                }`}
+              >
+                {cardDetected ? "Figurinha detectada" : "Procurando figurinha"}
               </div>
             )}
           </div>
