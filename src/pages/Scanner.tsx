@@ -46,11 +46,16 @@ export function Scanner() {
   async function loadOpenCv() {
     try {
       const cvModule = await import("@techstark/opencv-js");
-      const cvReady = (cvModule.default ?? cvModule) as CV | Promise<CV>;
-      cvRef.current = await Promise.resolve(cvReady);
+      const cvReady = (cvModule.default ?? cvModule) as CV;
+      if (!cvReady.Mat) throw new Error("OpenCV sem runtime");
+      cvRef.current = cvReady;
       setCvReady(true);
-    } catch {
-      setCameraError("Não foi possível carregar o detector da câmera.");
+    } catch (err) {
+      setCameraError(
+        `Não foi possível carregar o detector da câmera: ${
+          err instanceof Error ? err.message : "falha desconhecida"
+        }`,
+      );
     }
   }
 
