@@ -3,10 +3,23 @@ import { Camera, CheckCircle, RefreshCcw, XCircle } from "lucide-react";
 import { useCollection } from "@/store/useCollection";
 import { scanStickersFromImage } from "@/lib/ai";
 
+const MOTION_SAMPLE_WIDTH = 48;
+const MOTION_SAMPLE_HEIGHT = 64;
+const MOTION_THRESHOLD = 8;
+const STABLE_CAPTURE_MS = 900;
+
 export function Scanner() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const motionCanvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const animationRef = useRef<number | null>(null);
+  const lastFrameRef = useRef<Uint8ClampedArray | null>(null);
+  const stableSinceRef = useRef<number | null>(null);
+  const autoCaptureLockedRef = useRef(false);
+  const previewRef = useRef("");
+  const scanningRef = useRef(false);
+  const cameraReadyRef = useRef(false);
   const [preview, setPreview] = useState("");
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState("");
@@ -19,8 +32,28 @@ export function Scanner() {
 
   useEffect(() => {
     startCamera();
-    return () => stopCamera();
+    return () => {
+      stopMotionDetection();
+      stopCamera();
+    };
   }, []);
+
+  useEffect(() => {
+    previewRef.current = preview;
+    if (!preview) {
+      autoCaptureLockedRef.current = false;
+      stableSinceRef.current = null;
+      lastFrameRef.current = null;
+    }
+  }, [preview]);
+
+  useEffect(() => {
+    scanningRef.current = scanning;
+  }, [scanning]);
+
+  useEffect(() => {
+    cameraReadyRef.current = cameraReady;
+  }, [cameraReady]);
 
   function showToast(msg: string) {
     setToast(msg);
@@ -51,6 +84,7 @@ export function Scanner() {
         await videoRef.current.play();
       }
       setCameraReady(true);
+      startMotionDetection();
     } catch {
       setCameraError("Permita o acesso à câmera para escanear figurinhas.");
     }
@@ -59,6 +93,73 @@ export function Scanner() {
   function stopCamera() {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
+  }
+
+  function startMotionDetection() {
+    stopMotionDetection();
+    lastFrameRef.current = null;
+    stableSinceRef.current = null;
+
+    const tick = (now: number) => {
+      detectStableFrame(now);
+      animationRef.current = requestAnimationFrame(tick);
+    };
+
+    animationRef.current = requestAnimationFrame(tick);
+  }
+
+  function stopMotionDetection() {
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+      animationRef.current = null;
+    }
+  }
+
+  function detectStableFrame(now: number) {
+    if (
+      !cameraReadyRef.current ||
+      previewRef.current ||
+      scanningRef.current ||
+      autoCaptureLockedRef.current
+    ) {
+      stableSinceRef.current = null;
+      lastFrameRef.current = null;
+      return;
+    }
+
+    const video = videoRef.current;
+    const canvas = motionCanvasRef.current;
+    if (!video || !canvas || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+      return;
+    }
+
+    canvas.width = MOTION_SAMPLE_WIDTH;
+    canvas.height = MOTION_SAMPLE_HEIGHT;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return;
+
+    ctx.drawImage(video, 0, 0, MOTION_SAMPLE_WIDTH, MOTION_SAMPLE_HEIGHT);
+    const frame = ctx.getImageData(0, 0, MOTION_SAMPLE_WIDTH, MOTION_SAMPLE_HEIGHT).data;
+    const lastFrame = lastFrameRef.current;
+    lastFrameRef.current = new Uint8ClampedArray(frame);
+
+    if (!lastFrame) return;
+
+    let diff = 0;
+    for (let i = 0; i < frame.length; i += 16) {
+      diff += Math.abs(frame[i] - lastFrame[i]);
+    }
+
+    const averageDiff = diff / (frame.length / 16);
+    if (averageDiff < MOTION_THRESHOLD) {
+      stableSinceRef.current ??= now;
+      if (now - stableSinceRef.current >= STABLE_CAPTURE_MS) {
+        autoCaptureLockedRef.current = true;
+        void captureAndScan();
+      }
+    } else {
+      stableSinceRef.current = null;
+    }
   }
 
   async function captureAndScan() {
@@ -79,6 +180,8 @@ export function Scanner() {
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const base64 = canvas.toDataURL("image/jpeg", 0.9);
     setPreview(base64);
+    previewRef.current = base64;
+    autoCaptureLockedRef.current = true;
     setDetected([]);
     setSelected(new Set());
     setScanning(true);
@@ -104,6 +207,10 @@ export function Scanner() {
 
   function resetScan() {
     setPreview("");
+    previewRef.current = "";
+    autoCaptureLockedRef.current = false;
+    stableSinceRef.current = null;
+    lastFrameRef.current = null;
     setDetected([]);
     setSelected(new Set());
   }
@@ -166,16 +273,22 @@ export function Scanner() {
           </div>
 
           <canvas ref={canvasRef} className="hidden" />
+          <canvas ref={motionCanvasRef} className="hidden" />
 
           {!preview ? (
-            <button
-              onClick={captureAndScan}
-              disabled={!cameraReady || scanning || Boolean(cameraError)}
-              className="chip-press w-full bg-gold text-bg font-semibold text-sm rounded-xl py-3 disabled:opacity-40 flex items-center justify-center gap-2"
-            >
-              <Camera size={17} />
-              Capturar e escanear
-            </button>
+            <div className="space-y-2">
+              <p className="text-xs text-muted text-center">
+                Segure a câmera parada para capturar automaticamente.
+              </p>
+              <button
+                onClick={captureAndScan}
+                disabled={!cameraReady || scanning || Boolean(cameraError)}
+                className="chip-press w-full bg-gold text-bg font-semibold text-sm rounded-xl py-3 disabled:opacity-40 flex items-center justify-center gap-2"
+              >
+                <Camera size={17} />
+                Capturar agora
+              </button>
+            </div>
           ) : (
             <button
               onClick={resetScan}
