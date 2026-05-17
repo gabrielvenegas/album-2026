@@ -121,6 +121,7 @@ export function Scanner() {
     autoCaptureLockedRef.current = false;
     setDetected([]);
     setSelected(new Set());
+    void videoRef.current?.play().catch(() => startCamera());
   }
 
   return (
@@ -143,19 +144,19 @@ export function Scanner() {
           </p>
 
           <div className="relative overflow-hidden rounded-2xl border border-border bg-black aspect-[3/4]">
-            {preview ? (
+            <video
+              ref={videoRef}
+              playsInline
+              muted
+              autoPlay
+              className="h-full w-full object-cover"
+            />
+
+            {preview && (
               <img
                 src={preview}
                 alt="Imagem capturada"
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <video
-                ref={videoRef}
-                playsInline
-                muted
-                autoPlay
-                className="h-full w-full object-cover"
+                className="absolute inset-0 h-full w-full object-cover"
               />
             )}
 

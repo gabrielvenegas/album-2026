@@ -1,13 +1,7 @@
-import { COUNTRIES, getStickerCode } from '@/data/album'
-
 const BASE_URL = 'https://api.mulerouter.ai/vendors/openai/v1'
 const TEXT_MODEL = 'qwen-flash'
 const VISION_MODEL = 'qwen3-vl-flash'
 const REQUEST_TIMEOUT_MS = 45000
-const VALID_STICKER_CODES = new Set(
-  COUNTRIES.flatMap(country => country.stickers.map(sticker => getStickerCode(country.code, sticker.number)))
-)
-const VALID_PREFIXES = COUNTRIES.map(country => country.code).join(', ')
 
 class AiRequestError extends Error {
   constructor(message: string, readonly status: number) {
@@ -90,9 +84,8 @@ export async function scanStickersFromImage(apiKey: string, base64Image: string)
       role: 'system',
       content: `Você é um assistente especializado em identificar figurinhas do álbum Panini da Copa do Mundo 2026.
 Analise a imagem e leia todos os códigos de figurinhas visíveis. Os códigos geralmente aparecem impressos na borda da figurinha.
-Use apenas estes códigos de país: ${VALID_PREFIXES}.
-Cada país tem números de 1 a 20.
 O formato final é: CÓDIGO_PAÍS NÚMERO (ex: BRA 1, ARG 15, MEX 7).
+Aceite qualquer código de país ou seção com 3 letras, sem restringir a uma lista pré-existente.
 Não invente códigos quando a imagem estiver borrada ou cortada.
 Retorne APENAS um array JSON com os códigos encontrados, sem explicações.
 Exemplo: ["BRA 1", "ARG 7", "MEX 3"]
@@ -130,7 +123,7 @@ function normalizeStickerCodes(input: string): string[] {
     const parts = match.match(/^([A-Z]{3})\s*[-#]?\s*(\d{1,2})$/)
     if (!parts) continue
     const code = `${parts[1]} ${Number(parts[2])}`
-    if (VALID_STICKER_CODES.has(code)) seen.add(code)
+    seen.add(code)
   }
   return [...seen]
 }
