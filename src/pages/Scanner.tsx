@@ -1,33 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { Camera, CheckCircle, RefreshCcw, XCircle } from "lucide-react";
-import type { CV } from "@techstark/opencv-js";
 import { useCollection } from "@/store/useCollection";
 import { scanStickersFromImage } from "@/lib/ai";
-
-const DETECTION_SAMPLE_WIDTH = 180;
-const DETECTION_SAMPLE_HEIGHT = 240;
-const CARD_CAPTURE_MS = 350;
-const MIN_CARD_AREA_RATIO = 0.08;
-const MAX_CARD_AREA_RATIO = 0.9;
 
 export function Scanner() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const detectionCanvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const animationRef = useRef<number | null>(null);
-  const cardSinceRef = useRef<number | null>(null);
-  const cvRef = useRef<CV | null>(null);
   const autoCaptureLockedRef = useRef(false);
   const previewRef = useRef("");
-  const scanningRef = useRef(false);
-  const cameraReadyRef = useRef(false);
   const [preview, setPreview] = useState("");
   const [cameraReady, setCameraReady] = useState(false);
   const [cameraError, setCameraError] = useState("");
   const [scanning, setScanning] = useState(false);
-  const [cardDetected, setCardDetected] = useState(false);
-  const [cvReady, setCvReady] = useState(false);
   const [detected, setDetected] = useState<string[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState("");
@@ -35,45 +20,18 @@ export function Scanner() {
   const { apiKey, markMultiple } = useCollection();
 
   useEffect(() => {
-    void loadOpenCv();
     startCamera();
     return () => {
-      stopCardDetection();
       stopCamera();
     };
   }, []);
-
-  async function loadOpenCv() {
-    try {
-      const cvModule = await import("@techstark/opencv-js");
-      const cvReady = (cvModule.default ?? cvModule) as CV;
-      if (!cvReady.Mat) throw new Error("OpenCV sem runtime");
-      cvRef.current = cvReady;
-      setCvReady(true);
-    } catch (err) {
-      setCameraError(
-        `Não foi possível carregar o detector da câmera: ${
-          err instanceof Error ? err.message : "falha desconhecida"
-        }`,
-      );
-    }
-  }
 
   useEffect(() => {
     previewRef.current = preview;
     if (!preview) {
       autoCaptureLockedRef.current = false;
-      cardSinceRef.current = null;
     }
   }, [preview]);
-
-  useEffect(() => {
-    scanningRef.current = scanning;
-  }, [scanning]);
-
-  useEffect(() => {
-    cameraReadyRef.current = cameraReady;
-  }, [cameraReady]);
 
   function showToast(msg: string) {
     setToast(msg);
@@ -104,7 +62,6 @@ export function Scanner() {
         await videoRef.current.play();
       }
       setCameraReady(true);
-      startCardDetection();
     } catch {
       setCameraError("Permita o acesso à câmera para escanear figurinhas.");
     }
@@ -113,129 +70,6 @@ export function Scanner() {
   function stopCamera() {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
-  }
-
-  function startCardDetection() {
-    stopCardDetection();
-    cardSinceRef.current = null;
-
-    const tick = (now: number) => {
-      detectCardFrame(now);
-      animationRef.current = requestAnimationFrame(tick);
-    };
-
-    animationRef.current = requestAnimationFrame(tick);
-  }
-
-  function stopCardDetection() {
-    if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current);
-      animationRef.current = null;
-    }
-  }
-
-  function detectCardFrame(now: number) {
-    if (
-      !cameraReadyRef.current ||
-      !cvRef.current ||
-      previewRef.current ||
-      scanningRef.current ||
-      autoCaptureLockedRef.current
-    ) {
-      cardSinceRef.current = null;
-      return;
-    }
-
-    const video = videoRef.current;
-    const canvas = detectionCanvasRef.current;
-    if (!video || !canvas || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
-      return;
-    }
-
-    canvas.width = DETECTION_SAMPLE_WIDTH;
-    canvas.height = DETECTION_SAMPLE_HEIGHT;
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    if (!ctx) return;
-
-    ctx.drawImage(video, 0, 0, DETECTION_SAMPLE_WIDTH, DETECTION_SAMPLE_HEIGHT);
-    const imageData = ctx.getImageData(0, 0, DETECTION_SAMPLE_WIDTH, DETECTION_SAMPLE_HEIGHT);
-
-    const hasCard = hasStickerLikeRectangle(imageData);
-    setCardDetected(hasCard);
-
-    if (hasCard) {
-      cardSinceRef.current ??= now;
-      if (now - cardSinceRef.current >= CARD_CAPTURE_MS) {
-        autoCaptureLockedRef.current = true;
-        void captureAndScan();
-      }
-    } else {
-      cardSinceRef.current = null;
-    }
-  }
-
-  function hasStickerLikeRectangle(imageData: ImageData): boolean {
-    const cv = cvRef.current;
-    if (!cv) return false;
-
-    const src = cv.matFromImageData(imageData);
-    const gray = new cv.Mat();
-    const blurred = new cv.Mat();
-    const edges = new cv.Mat();
-    const dilated = new cv.Mat();
-    const contours = new cv.MatVector();
-    const hierarchy = new cv.Mat();
-    const kernel = cv.getStructuringElement(
-      cv.MORPH_RECT,
-      new cv.Size(3, 3),
-    );
-    let found = false;
-
-    try {
-      cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
-      cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0);
-      cv.Canny(blurred, edges, 35, 120);
-      cv.dilate(edges, dilated, kernel);
-      cv.findContours(
-        dilated,
-        contours,
-        hierarchy,
-        cv.RETR_LIST,
-        cv.CHAIN_APPROX_SIMPLE,
-      );
-
-      const frameArea = DETECTION_SAMPLE_WIDTH * DETECTION_SAMPLE_HEIGHT;
-      for (let i = 0; i < contours.size(); i++) {
-        const contour = contours.get(i);
-        const approx = new cv.Mat();
-        const area = cv.contourArea(contour);
-        const areaRatio = area / frameArea;
-
-        if (areaRatio >= MIN_CARD_AREA_RATIO && areaRatio <= MAX_CARD_AREA_RATIO) {
-          const perimeter = cv.arcLength(contour, true);
-          cv.approxPolyDP(contour, approx, 0.04 * perimeter, true);
-
-          if (approx.rows === 4) {
-            found = true;
-          }
-        }
-
-        contour.delete();
-        approx.delete();
-        if (found) break;
-      }
-    } finally {
-      src.delete();
-      gray.delete();
-      blurred.delete();
-      edges.delete();
-      dilated.delete();
-      contours.delete();
-      hierarchy.delete();
-      kernel.delete();
-    }
-
-    return found;
   }
 
   async function captureAndScan() {
@@ -285,8 +119,6 @@ export function Scanner() {
     setPreview("");
     previewRef.current = "";
     autoCaptureLockedRef.current = false;
-    cardSinceRef.current = null;
-    setCardDetected(false);
     setDetected([]);
     setSelected(new Set());
   }
@@ -346,31 +178,14 @@ export function Scanner() {
                 </button>
               </div>
             )}
-
-            {!preview && !cameraError && (
-              <div
-                className={`absolute left-3 top-3 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                  cardDetected
-                    ? "bg-owned text-white"
-                    : "bg-bg/75 text-muted"
-                }`}
-              >
-                {cardDetected
-                  ? "Figurinha detectada"
-                  : cvReady
-                    ? "Procurando figurinha"
-                    : "Carregando detector"}
-              </div>
-            )}
           </div>
 
           <canvas ref={canvasRef} className="hidden" />
-          <canvas ref={detectionCanvasRef} className="hidden" />
 
           {!preview ? (
             <div className="space-y-2">
               <p className="text-xs text-muted text-center">
-                A captura acontece automaticamente quando uma figurinha entra no quadro.
+                Posicione as figurinhas no quadro e capture quando estiver nítido.
               </p>
               <button
                 onClick={captureAndScan}
