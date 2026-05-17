@@ -84,11 +84,12 @@ export async function scanStickersFromImage(apiKey: string, base64Image: string)
       role: 'system',
       content: `Você é um assistente especializado em identificar figurinhas do álbum Panini da Copa do Mundo 2026.
 Analise a imagem e leia todos os códigos de figurinhas visíveis. Os códigos geralmente aparecem impressos na borda da figurinha.
-O formato final é: CÓDIGO_PAÍS NÚMERO (ex: BRA 1, ARG 15, MEX 7).
-Aceite qualquer código de país ou seção com 3 letras, sem restringir a uma lista pré-existente.
+O formato final é: CÓDIGO_PAÍS NÚMERO (ex: BRA 1, ARG 15, MEX 7), exceto códigos especiais.
+Também leia códigos especiais como 00, FWC 1 a FWC 19, e Coca-Cola CC1 a CC14.
+Aceite qualquer código de país ou seção com 2 ou 3 letras, sem restringir a uma lista pré-existente.
 Não invente códigos quando a imagem estiver borrada ou cortada.
 Retorne APENAS um array JSON com os códigos encontrados, sem explicações.
-Exemplo: ["BRA 1", "ARG 7", "MEX 3"]
+Exemplo: ["00", "BRA 1", "FWC 7", "CC1"]
 Se não encontrar nenhuma figurinha, retorne: []`,
     },
     {
@@ -117,15 +118,15 @@ Se não encontrar nenhuma figurinha, retorne: []`,
 }
 
 function normalizeStickerCodes(input: string): string[] {
-  const seen = new Set<string>()
-  const matches = input.toUpperCase().match(/[A-Z]{3}\s*[-#]?\s*\d{1,2}/g) ?? []
-  for (const match of matches) {
+  const matches = input.toUpperCase().match(/\b(?:00|CC\s*[-#]?\s*\d{1,2}|[A-Z]{3}\s*[-#]?\s*\d{1,2})\b/g) ?? []
+  return matches.flatMap(match => {
+    if (match === '00') return '00'
+    const ccParts = match.match(/^CC\s*[-#]?\s*(\d{1,2})$/)
+    if (ccParts) return `CC${Number(ccParts[1])}`
     const parts = match.match(/^([A-Z]{3})\s*[-#]?\s*(\d{1,2})$/)
-    if (!parts) continue
-    const code = `${parts[1]} ${Number(parts[2])}`
-    seen.add(code)
-  }
-  return [...seen]
+    if (!parts) return []
+    return `${parts[1]} ${Number(parts[2])}`
+  })
 }
 
 export async function generateSwapMessage(apiKey: string, duplicates: { code: string; count: number }[]): Promise<string> {

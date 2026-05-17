@@ -9,7 +9,7 @@ interface Props {
 
 export function CountryCard({ country }: Props) {
   const navigate = useNavigate()
-  const codes = country.stickers.map(s => getStickerCode(country.code, s.number))
+  const codes = country.stickers.map(s => getStickerCode(country.code, s))
   const { owned, duplicates, missing } = useCountryStats(codes)
   const total = country.stickers.length
   const pct = Math.round((owned / total) * 100)
@@ -27,7 +27,7 @@ export function CountryCard({ country }: Props) {
       </div>
       <div className="w-full text-center">
         <p className="text-[11px] font-semibold text-text leading-tight truncate">{country.name}</p>
-        <p className="text-[9px] text-muted mt-0.5">Gr. {country.group} · {pct}%</p>
+        <p className="text-[9px] text-muted mt-0.5">{country.group === 'Extras' ? 'Extras' : `Gr. ${country.group}`} · {pct}%</p>
       </div>
       {(missing > 0 || duplicates > 0) && (
         <div className="flex gap-1.5 flex-wrap justify-center">

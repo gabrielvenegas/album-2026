@@ -20,7 +20,7 @@ export function Dashboard() {
   const pct = Math.round((owned / TOTAL_STICKERS) * 100);
 
   const worstCountries = COUNTRIES.map((c) => {
-    const codes = c.stickers.map((s) => getStickerCode(c.code, s.number));
+    const codes = c.stickers.map((s) => getStickerCode(c.code, s));
     const own = codes.filter(
       (code) => statuses[code] === "owned" || statuses[code] === "duplicate",
     ).length;

@@ -16,7 +16,7 @@ export function Duplicates() {
     .map(c => {
       const dups = c.stickers
         .map(s => {
-          const code = getStickerCode(c.code, s.number)
+          const code = getStickerCode(c.code, s)
           return statuses[code] === 'duplicate' ? { code, count: dupCounts[code] ?? 2 } : null
         })
         .filter(Boolean) as { code: string; count: number }[]

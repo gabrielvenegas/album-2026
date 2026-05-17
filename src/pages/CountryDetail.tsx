@@ -21,9 +21,7 @@ export function CountryDetail() {
     );
   }
 
-  const codes = country.stickers.map((s) =>
-    getStickerCode(country.code, s.number),
-  );
+  const codes = country.stickers.map((s) => getStickerCode(country.code, s));
   const { owned, duplicates, missing } = useCountryStats(codes);
   const total = country.stickers.length;
   const pct = Math.round((owned / total) * 100);
@@ -91,8 +89,8 @@ export function CountryDetail() {
         <div className="grid grid-cols-4 gap-2 mb-4">
           {country.stickers.map((sticker) => (
             <StickerChip
-              key={sticker.number}
-              code={getStickerCode(country.code, sticker.number)}
+              key={sticker.code ?? sticker.number}
+              code={getStickerCode(country.code, sticker)}
               label={sticker.label}
               isFoil={sticker.isFoil}
             />

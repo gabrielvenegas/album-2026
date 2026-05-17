@@ -17,7 +17,7 @@ export function Scanner() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState("");
 
-  const { apiKey, markMultiple } = useCollection();
+  const { apiKey, markMultiple, statuses } = useCollection();
 
   useEffect(() => {
     startCamera();
@@ -99,7 +99,7 @@ export function Scanner() {
     try {
       const codes = await scanStickersFromImage(apiKey, base64);
       setDetected(codes);
-      setSelected(new Set(codes));
+      setSelected(new Set(codes.map((code, index) => `${code}:${index}`)));
     } catch (err) {
       showToast(`Erro: ${err instanceof Error ? err.message : "Falha"}`);
     } finally {
@@ -108,10 +108,27 @@ export function Scanner() {
   }
 
   function confirmCamera() {
-    const codes = [...selected];
+    const codes = detected.filter((code, index) => selected.has(`${code}:${index}`));
     if (!codes.length) return;
-    markMultiple(codes, "owned");
-    showToast(`${codes.length} figurinha(s) marcadas como coletadas!`);
+    const seenInScan = new Set<string>();
+    const ownedCodes: string[] = [];
+    const repeatedCodes: string[] = [];
+
+    for (const code of codes) {
+      if (statuses[code] === "owned" || statuses[code] === "duplicate" || seenInScan.has(code)) {
+        repeatedCodes.push(code);
+      } else {
+        ownedCodes.push(code);
+        seenInScan.add(code);
+      }
+    }
+
+    if (ownedCodes.length) markMultiple(ownedCodes, "owned");
+    if (repeatedCodes.length) markMultiple(repeatedCodes, "duplicate");
+
+    showToast(
+      `${ownedCodes.length} nova(s), ${repeatedCodes.length} repetida(s).`,
+    );
     resetScan();
   }
 
@@ -186,29 +203,39 @@ export function Scanner() {
                   {detected.length} figurinha(s) detectadas:
                 </p>
                 <div className="flex flex-wrap gap-1.5 mb-3 max-h-24 overflow-y-auto">
-                  {detected.map((code) => (
-                    <button
-                      key={code}
-                      onClick={() => {
-                        const next = new Set(selected);
-                        if (next.has(code)) next.delete(code);
-                        else next.add(code);
-                        setSelected(next);
-                      }}
-                      className={`chip-press px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-colors flex items-center gap-1 ${
-                        selected.has(code)
-                          ? "bg-owned/20 border-owned/50 text-owned"
-                          : "bg-surface border-border text-muted"
-                      }`}
-                    >
-                      {selected.has(code) ? (
-                        <CheckCircle size={11} />
-                      ) : (
-                        <XCircle size={11} />
-                      )}
-                      {code}
-                    </button>
-                  ))}
+                  {detected.map((code, index) => {
+                    const selectionKey = `${code}:${index}`;
+                    const isRepeated =
+                      statuses[code] === "owned" ||
+                      statuses[code] === "duplicate" ||
+                      detected.indexOf(code) !== index;
+                    return (
+                      <button
+                        key={selectionKey}
+                        onClick={() => {
+                          const next = new Set(selected);
+                          if (next.has(selectionKey)) next.delete(selectionKey);
+                          else next.add(selectionKey);
+                          setSelected(next);
+                        }}
+                        className={`chip-press px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-colors flex items-center gap-1 ${
+                          selected.has(selectionKey)
+                            ? isRepeated
+                              ? "bg-duplicate/20 border-duplicate/50 text-duplicate"
+                              : "bg-owned/20 border-owned/50 text-owned"
+                            : "bg-surface border-border text-muted"
+                        }`}
+                      >
+                        {selected.has(selectionKey) ? (
+                          <CheckCircle size={11} />
+                        ) : (
+                          <XCircle size={11} />
+                        )}
+                        {code}
+                        {isRepeated && <span className="text-[9px]">rep.</span>}
+                      </button>
+                    );
+                  })}
                 </div>
                 <button
                   onClick={confirmCamera}

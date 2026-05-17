@@ -18,6 +18,7 @@ const GROUPS: Group[] = [
   "J",
   "K",
   "L",
+  "Extras",
 ];
 
 const CONF_ORDER: Confederation[] = [
@@ -27,6 +28,7 @@ const CONF_ORDER: Confederation[] = [
   "AFC",
   "CAF",
   "OFC",
+  "Inter",
 ];
 const CONF_LABELS: Record<Confederation, string> = {
   CONMEBOL: "América do Sul",
@@ -96,7 +98,7 @@ export function Countries() {
               return (
                 <div key={group}>
                   <h2 className="text-xs font-semibold text-muted uppercase tracking-widest mb-3">
-                    Grupo {group}
+                    {group === "Extras" ? "Extras" : `Grupo ${group}`}
                   </h2>
                   <div className="grid grid-cols-3 gap-2">
                     {countries.map((country) => (
