@@ -178,6 +178,46 @@ export function Scanner() {
                 </button>
               </div>
             )}
+
+            {detected.length > 0 && !scanning && (
+              <div className="absolute inset-x-3 bottom-3 rounded-2xl border border-border bg-bg/95 p-3 shadow-xl backdrop-blur">
+                <p className="text-xs font-semibold text-text mb-2">
+                  {detected.length} figurinha(s) detectadas:
+                </p>
+                <div className="flex flex-wrap gap-1.5 mb-3 max-h-24 overflow-y-auto">
+                  {detected.map((code) => (
+                    <button
+                      key={code}
+                      onClick={() => {
+                        const next = new Set(selected);
+                        if (next.has(code)) next.delete(code);
+                        else next.add(code);
+                        setSelected(next);
+                      }}
+                      className={`chip-press px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-colors flex items-center gap-1 ${
+                        selected.has(code)
+                          ? "bg-owned/20 border-owned/50 text-owned"
+                          : "bg-surface border-border text-muted"
+                      }`}
+                    >
+                      {selected.has(code) ? (
+                        <CheckCircle size={11} />
+                      ) : (
+                        <XCircle size={11} />
+                      )}
+                      {code}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={confirmCamera}
+                  disabled={selected.size === 0}
+                  className="chip-press w-full bg-owned text-white font-semibold text-sm rounded-xl py-3 disabled:opacity-40"
+                >
+                  Confirmar {selected.size} figurinha(s)
+                </button>
+              </div>
+            )}
           </div>
 
           <canvas ref={canvasRef} className="hidden" />
@@ -185,7 +225,8 @@ export function Scanner() {
           {!preview ? (
             <div className="space-y-2">
               <p className="text-xs text-muted text-center">
-                Posicione as figurinhas no quadro e capture quando estiver nítido.
+                Posicione as figurinhas no quadro e capture quando estiver
+                nítido.
               </p>
               <button
                 onClick={captureAndScan}
@@ -205,46 +246,6 @@ export function Scanner() {
               <RefreshCcw size={15} />
               Nova captura
             </button>
-          )}
-
-          {detected.length > 0 && (
-            <div>
-              <p className="text-sm font-semibold text-text mb-2">
-                {detected.length} figurinha(s) detectadas:
-              </p>
-              <div className="flex flex-wrap gap-2 mb-3">
-                {detected.map((code) => (
-                  <button
-                    key={code}
-                    onClick={() => {
-                      const next = new Set(selected);
-                      if (next.has(code)) next.delete(code);
-                      else next.add(code);
-                      setSelected(next);
-                    }}
-                    className={`chip-press px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors flex items-center gap-1 ${
-                      selected.has(code)
-                        ? "bg-owned/20 border-owned/50 text-owned"
-                        : "bg-surface border-border text-muted"
-                    }`}
-                  >
-                    {selected.has(code) ? (
-                      <CheckCircle size={11} />
-                    ) : (
-                      <XCircle size={11} />
-                    )}
-                    {code}
-                  </button>
-                ))}
-              </div>
-              <button
-                onClick={confirmCamera}
-                disabled={selected.size === 0}
-                className="chip-press w-full bg-owned text-white font-semibold text-sm rounded-xl py-3 disabled:opacity-40"
-              >
-                Confirmar {selected.size} figurinha(s)
-              </button>
-            </div>
           )}
 
           {preview && !scanning && detected.length === 0 && (
