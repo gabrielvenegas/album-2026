@@ -10,8 +10,9 @@ interface Props {
 
 export function StickerChip({ code, label, isFoil }: Props) {
   const status = useStickerStatus(code)
-  const { cycleStatus, incrementDup, dupCounts } = useCollection()
+  const { cycleStatus, setDuplicateCopies, dupCounts } = useCollection()
   const count = dupCounts[code] ?? 2
+  const repeatedCopies = status === 'duplicate' ? count - 1 : 0
 
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const didLongPress = useRef(false)
@@ -20,9 +21,12 @@ export function StickerChip({ code, label, isFoil }: Props) {
     didLongPress.current = false
     longPressTimer.current = setTimeout(() => {
       didLongPress.current = true
-      if (status === 'duplicate') incrementDup(code)
+      const next = window.prompt('Quantas repetidas você tem?', String(repeatedCopies || 1))
+      if (next === null) return
+      const copies = Number(next.replace(',', '.'))
+      if (Number.isFinite(copies)) setDuplicateCopies(code, copies)
     }, 500)
-  }, [code, status, incrementDup])
+  }, [code, repeatedCopies, setDuplicateCopies])
 
   const handlePointerUp = useCallback(() => {
     if (longPressTimer.current) clearTimeout(longPressTimer.current)

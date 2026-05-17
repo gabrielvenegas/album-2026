@@ -88,8 +88,9 @@ O formato final é: CÓDIGO_PAÍS NÚMERO (ex: BRA 1, ARG 15, MEX 7), exceto có
 Também leia códigos especiais como 00, FWC 1 a FWC 19, e Coca-Cola CC1 a CC14.
 Aceite qualquer código de país ou seção com 2 ou 3 letras, sem restringir a uma lista pré-existente.
 Não invente códigos quando a imagem estiver borrada ou cortada.
+Se o mesmo código aparecer mais de uma vez na imagem, repita esse código no array uma vez para cada cópia visível.
 Retorne APENAS um array JSON com os códigos encontrados, sem explicações.
-Exemplo: ["00", "BRA 1", "FWC 7", "CC1"]
+Exemplo: ["00", "BRA 1", "BRA 1", "FWC 7", "CC1"]
 Se não encontrar nenhuma figurinha, retorne: []`,
     },
     {

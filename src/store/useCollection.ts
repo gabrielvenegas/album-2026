@@ -12,6 +12,7 @@ interface CollectionState {
   cycleStatus: (code: string) => void
   incrementDup: (code: string) => void
   decrementDup: (code: string) => void
+  setDuplicateCopies: (code: string, copies: number) => void
   markMultiple: (codes: string[], status: StickerStatus) => void
   setApiKey: (key: string) => void
   resetCountry: (countryCode: string, stickerCodes: string[]) => void
@@ -50,6 +51,18 @@ export const useCollection = create<CollectionState>()(
         }))
       },
 
+      setDuplicateCopies(code, copies) {
+        const normalized = Math.max(0, Math.floor(copies))
+        if (normalized === 0) {
+          get().setStatus(code, 'owned')
+          return
+        }
+        set(s => ({
+          statuses: { ...s.statuses, [code]: 'duplicate' },
+          dupCounts: { ...s.dupCounts, [code]: normalized + 1 },
+        }))
+      },
+
       decrementDup(code) {
         const count = get().dupCounts[code] ?? 2
         if (count <= 2) {
@@ -64,7 +77,9 @@ export const useCollection = create<CollectionState>()(
           const statuses = { ...s.statuses }
           const dupCounts = { ...s.dupCounts }
           for (const code of codes) {
-            if (status === 'duplicate' && statuses[code] === 'owned') {
+            if (status === 'duplicate' && statuses[code] === 'duplicate') {
+              dupCounts[code] = (dupCounts[code] ?? 2) + 1
+            } else if (status === 'duplicate' && statuses[code] === 'owned') {
               statuses[code] = 'duplicate'
               if (!dupCounts[code]) dupCounts[code] = 2
             } else if (status === 'owned' && statuses[code] !== 'owned') {
