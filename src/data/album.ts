@@ -163,7 +163,7 @@ export const COUNTRIES: Country[] = [
   {
     code: "SCO",
     name: "Escócia",
-    flag: "🏴",
+    flag: "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
     confederation: "UEFA",
     group: "C",
     stickers: makeStickers(),
@@ -505,8 +505,12 @@ export const TOTAL_STICKERS = COUNTRIES.reduce(
   0,
 );
 
-export function getStickerCode(countryCode: string, sticker: StickerDef | number | string): string {
-  if (typeof sticker === "object") return sticker.code ?? `${countryCode} ${sticker.number}`;
+export function getStickerCode(
+  countryCode: string,
+  sticker: StickerDef | number | string,
+): string {
+  if (typeof sticker === "object")
+    return sticker.code ?? `${countryCode} ${sticker.number}`;
   return `${countryCode} ${sticker}`;
 }
 

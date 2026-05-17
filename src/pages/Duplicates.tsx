@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { ImageDown, ClipboardCopy, Check, Bot, Trophy } from 'lucide-react'
+import { ImageDown, ClipboardCopy, Check, Bot, Trophy, Repeat2 } from 'lucide-react'
 import { COUNTRIES, getStickerCode } from '@/data/album'
 import { useCollection } from '@/store/useCollection'
 import { exportElementAsImage, formatDuplicatesAsText } from '@/lib/export'
@@ -11,6 +11,7 @@ export function Duplicates() {
   const [aiMsg, setAiMsg] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [friendInput, setFriendInput] = useState('')
 
   const groups = COUNTRIES
     .map(c => {
@@ -25,6 +26,14 @@ export function Duplicates() {
     .filter(g => g.stickers.length > 0)
 
   const totalDups = groups.reduce((sum, g) => sum + g.stickers.reduce((s, x) => s + (x.count - 1), 0), 0)
+  const myDuplicateCounts = new Map(groups.flatMap(g => g.stickers.map(s => [s.code, Math.max(0, s.count - 1)] as const)))
+  const friendDuplicateCounts = parseDuplicateText(friendInput)
+  const friendDuplicateCodes = [...friendDuplicateCounts.keys()]
+  const friendCanGive = friendDuplicateCodes.filter(code => !hasSticker(code))
+  const iCanGive = [...myDuplicateCounts.keys()].filter(code => !friendDuplicateCounts.has(code))
+  const suggestedSwaps = friendCanGive
+    .slice(0, iCanGive.length)
+    .map((receive, i) => ({ receive, give: iCanGive[i] }))
 
   async function handleExportImage() {
     if (!exportRef.current) return
@@ -113,6 +122,52 @@ export function Duplicates() {
           </div>
         )}
 
+        <div className="mb-4 bg-surface border border-border rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Repeat2 size={15} className="text-gold" />
+            <p className="text-xs font-semibold text-muted uppercase tracking-widest">Comparar troca</p>
+          </div>
+          <textarea
+            value={friendInput}
+            onChange={e => setFriendInput(e.target.value)}
+            placeholder="Cole aqui a lista de repetidas do seu amigo..."
+            className="w-full h-28 bg-bg border border-border rounded-xl px-3 py-2.5 text-base text-text placeholder-muted outline-none focus:border-gold/50 resize-none transition-colors"
+          />
+
+          {friendInput.trim() && (
+            <div className="mt-3">
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                <MiniStat label="Seu amigo tem e você falta" value={friendCanGive.length} />
+                <MiniStat label="Você tem e ele não listou" value={iCanGive.length} />
+              </div>
+
+              {suggestedSwaps.length > 0 ? (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-text">Sugestão automática:</p>
+                  {suggestedSwaps.map(({ receive, give }) => (
+                    <div key={`${give}-${receive}`} className="flex items-center gap-2 rounded-xl border border-border bg-bg px-3 py-2">
+                      <span className="text-xs text-muted">Você dá</span>
+                      <span className="font-bold text-duplicate text-sm">{give}</span>
+                      <span className="text-xs text-muted">e recebe</span>
+                      <span className="font-bold text-owned text-sm">{receive}</span>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => navigator.clipboard.writeText(formatSwapSuggestion(suggestedSwaps))}
+                    className="chip-press w-full bg-owned/15 border border-owned/30 text-owned text-xs font-semibold rounded-xl py-2.5"
+                  >
+                    Copiar sugestão
+                  </button>
+                </div>
+              ) : (
+                <p className="text-xs text-muted text-center py-2">
+                  Nenhuma troca direta encontrada com essa lista.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
         <div ref={exportRef} className="bg-bg rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-4">
             <Trophy size={22} className="text-gold" />
@@ -145,6 +200,49 @@ export function Duplicates() {
           </div>
         </div>
       </div>
+    </div>
+  )
+
+  function hasSticker(code: string): boolean {
+    return statuses[code] === 'owned' || statuses[code] === 'duplicate'
+  }
+}
+
+function parseDuplicateText(text: string): Map<string, number> {
+  const counts = new Map<string, number>()
+  const matches = text.toUpperCase().match(/\b(?:00|CC\s*[-#]?\s*\d{1,2}|[A-Z]{3}\s*[-#]?\s*\d{1,2})(?:\((\d+)X\)|\s+X(\d+)|X(\d+))?/g) ?? []
+
+  for (const raw of matches) {
+    const codeMatch = raw.match(/\b(00|CC\s*[-#]?\s*\d{1,2}|[A-Z]{3}\s*[-#]?\s*\d{1,2})\b/)
+    if (!codeMatch) continue
+    const code = normalizeCode(codeMatch[1])
+    const countMatch = raw.match(/\((\d+)X\)|\s+X(\d+)|X(\d+)/)
+    const count = countMatch ? Number(countMatch[1] ?? countMatch[2] ?? countMatch[3]) : 1
+    counts.set(code, (counts.get(code) ?? 0) + count)
+  }
+
+  return counts
+}
+
+function normalizeCode(raw: string): string {
+  const code = raw.toUpperCase().replace(/\s+/g, ' ').replace(/[-#]/g, '').trim()
+  if (code === '00') return code
+  const cc = code.match(/^CC\s*(\d{1,2})$/)
+  if (cc) return `CC${Number(cc[1])}`
+  const parts = code.match(/^([A-Z]{3})\s*(\d{1,2})$/)
+  if (parts) return `${parts[1]} ${Number(parts[2])}`
+  return code
+}
+
+function formatSwapSuggestion(swaps: { give: string; receive: string }[]): string {
+  return swaps.map(s => `Eu te dou ${s.give} e você me dá ${s.receive}`).join('\n')
+}
+
+function MiniStat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-xl border border-border bg-bg px-3 py-2">
+      <p className="text-lg font-bold text-text">{value}</p>
+      <p className="text-[10px] text-muted leading-tight">{label}</p>
     </div>
   )
 }
