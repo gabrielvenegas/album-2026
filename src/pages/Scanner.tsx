@@ -112,7 +112,7 @@ export function Scanner() {
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {toast && (
-        <div className="fixed top-4 left-4 right-4 z-50 bg-owned text-white text-sm font-semibold rounded-xl px-4 py-3 text-center shadow-lg">
+        <div className="toast-safe fixed left-4 right-4 z-50 bg-owned text-white text-sm font-semibold rounded-xl px-4 py-3 text-center shadow-lg">
           {toast}
         </div>
       )}

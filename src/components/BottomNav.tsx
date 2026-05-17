@@ -17,7 +17,7 @@ export function BottomNav() {
   return (
     <nav
       className="bg-surface border-t border-border flex-none"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 10px)' }}
     >
       <div className="flex">
         {TABS.map(tab => {
@@ -26,7 +26,7 @@ export function BottomNav() {
             <button
               key={tab.path}
               onClick={() => navigate(tab.path)}
-              className={`flex-1 flex flex-col items-center justify-center gap-1 py-3 transition-colors ${
+              className={`flex-1 flex flex-col items-center justify-center gap-1 pt-3 pb-2 transition-colors ${
                 isActive ? 'text-gold' : 'text-muted'
               }`}
             >

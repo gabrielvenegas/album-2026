@@ -64,7 +64,7 @@ export function Settings() {
   return (
     <div className="scroll-area flex-1 px-4 py-6">
       {toast && (
-        <div className="fixed top-4 left-4 right-4 z-50 bg-owned text-white text-sm font-semibold rounded-xl px-4 py-3 text-center shadow-lg">
+        <div className="toast-safe fixed left-4 right-4 z-50 bg-owned text-white text-sm font-semibold rounded-xl px-4 py-3 text-center shadow-lg">
           {toast}
         </div>
       )}

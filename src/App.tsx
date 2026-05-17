@@ -10,11 +10,7 @@ import { Settings } from '@/pages/Settings'
 export default function App() {
   return (
     <BrowserRouter>
-      {/* position:fixed inset-0 reliably fills the full screen in iOS standalone PWA mode,
-          unlike height:100% which can leave a gap at the bottom */}
-      <div className="flex flex-col bg-bg" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
-        {/* Top safe-area bar — fills the status bar zone with the app background */}
-        <div className="flex-none bg-bg" style={{ height: 'env(safe-area-inset-top, 0px)' }} />
+      <div className="app-shell">
         <div className="flex-1 flex flex-col min-h-0">
           <Routes>
             <Route path="/" element={<Dashboard />} />
