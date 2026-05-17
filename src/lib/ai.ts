@@ -3,6 +3,7 @@ import { COUNTRIES, getStickerCode } from '@/data/album'
 const BASE_URL = 'https://api.mulerouter.ai/vendors/openai/v1'
 const TEXT_MODEL = 'qwen-flash'
 const VISION_MODEL = 'qwen3-vl-flash'
+const REQUEST_TIMEOUT_MS = 45000
 const VALID_STICKER_CODES = new Set(
   COUNTRIES.flatMap(country => country.stickers.map(sticker => getStickerCode(country.code, sticker.number)))
 )
@@ -28,25 +29,38 @@ async function chatWithModel(
   model: string,
   maxTokens = 500
 ): Promise<string> {
-  const res = await fetch(`${BASE_URL}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${normalizeApiKey(apiKey)}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      temperature: 0,
-      max_tokens: maxTokens,
-    }),
-  })
-  if (!res.ok) {
-    const err = await res.text().catch(() => res.statusText)
-    throw new AiRequestError(cleanApiError(err), res.status)
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
+
+  try {
+    const res = await fetch(`${BASE_URL}/chat/completions`, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        'Authorization': `Bearer ${normalizeApiKey(apiKey)}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature: 0,
+        max_tokens: maxTokens,
+      }),
+    })
+    if (!res.ok) {
+      const err = await res.text().catch(() => res.statusText)
+      throw new AiRequestError(cleanApiError(err), res.status)
+    }
+    const data = await res.json() as { choices: { message: { content: string } }[] }
+    return data.choices[0]?.message?.content ?? ''
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new Error('Tempo esgotado ao analisar a imagem. Tente uma foto menor ou mais clara.')
+    }
+    throw err
+  } finally {
+    clearTimeout(timeout)
   }
-  const data = await res.json() as { choices: { message: { content: string } }[] }
-  return data.choices[0]?.message?.content ?? ''
 }
 
 function normalizeApiKey(apiKey: string): string {
