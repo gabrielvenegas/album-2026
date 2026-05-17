@@ -3,132 +3,150 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
-  --tabbar-content-height: 68px;
-  --tabbar-safe-bottom: max(env(safe-area-inset-bottom, 0px), 34px);
-  --tabbar-height: calc(var(--tabbar-content-height) + var(--tabbar-safe-bottom));
+    color-scheme: dark;
+    --tabbar-content-height: 68px;
+    --tabbar-safe-bottom: max(env(safe-area-inset-bottom, 0px), 34px);
+    --tabbar-height: calc(
+        var(--tabbar-content-height) + var(--tabbar-safe-bottom)
+    );
 }
 
 * {
-  -webkit-tap-highlight-color: transparent;
-  box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    box-sizing: border-box;
 }
 
 html,
 body,
 #root {
-  width: 100%;
-  height: 100%;
-  margin: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
 }
 
 html {
-  height: -webkit-fill-available;
+    height: -webkit-fill-available;
 }
 
-html, body {
-  /* iOS may paint the home-indicator strip from the document background. */
-  background: #111816;
-  overscroll-behavior: none;
-  overflow: hidden;
+html,
+body {
+    /* iOS may paint the home-indicator strip from the document background. */
+    background: #111816;
+    overscroll-behavior: none;
 }
 
 body {
-  color: #f0fdf4;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  position: fixed;
-  inset: 0;
-  width: 100%;
+    color: #f0fdf4;
+    font-family:
+        -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    position: fixed;
+    inset: 0;
+    width: 100%;
 }
 
 .app-shell {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  background: #111816;
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: var(--tabbar-height);
-  overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    background: #111816;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: var(--tabbar-height);
+    overflow: hidden;
 }
 
 .app-content {
-  background: #080c0a;
-  overflow: hidden;
+    background: #111816;
+    min-height: 84vh;
+    overflow: hidden;
 }
 
 .bottom-nav {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 40;
-  height: var(--tabbar-height);
-  padding-bottom: var(--tabbar-safe-bottom);
-  background: #111816;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    /*height: var(--tabbar-height);*/
+    /*padding-bottom: var(--tabbar-safe-bottom);*/
+    background: #111816;
+    /*background: red;*/
 }
 
 .bottom-nav-items {
-  height: var(--tabbar-content-height);
+    padding-top: 16px;
 }
 
 .toast-safe {
-  top: calc(env(safe-area-inset-top, 0px) + 1rem);
+    top: calc(env(safe-area-inset-top, 0px) + 1rem);
 }
 
 input,
 textarea,
 select {
-  font-size: 16px !important;
+    font-size: 16px !important;
 }
 
 /* Safe area helpers */
 .pt-safe {
-  padding-top: env(safe-area-inset-top, 0px);
+    padding-top: env(safe-area-inset-top, 0px);
 }
 .pb-safe {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* Smooth scroll for page content */
 .scroll-area {
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
 }
 
 /* Custom scrollbar */
 .scroll-area::-webkit-scrollbar {
-  width: 4px;
+    width: 4px;
 }
 .scroll-area::-webkit-scrollbar-track {
-  background: transparent;
+    background: transparent;
 }
 .scroll-area::-webkit-scrollbar-thumb {
-  background: #1e2b24;
-  border-radius: 2px;
+    background: #1e2b24;
+    border-radius: 2px;
 }
 
 /* Chip press animation */
 .chip-press {
-  transition: transform 0.1s ease, background-color 0.15s ease;
+    transition:
+        transform 0.1s ease,
+        background-color 0.15s ease;
 }
 .chip-press:active {
-  transform: scale(0.93);
+    transform: scale(0.93);
 }
 
 /* Progress ring animation */
 @keyframes ring-fill {
-  from { stroke-dashoffset: var(--circumference); }
-  to { stroke-dashoffset: var(--offset); }
+    from {
+        stroke-dashoffset: var(--circumference);
+    }
+    to {
+        stroke-dashoffset: var(--offset);
+    }
 }
 
 .ring-animate {
-  animation: ring-fill 0.8s ease-out forwards;
+    animation: ring-fill 0.8s ease-out forwards;
 }
 
 /* Pulse for foil stickers */
 @keyframes shimmer {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+    0%,
+    100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
 }

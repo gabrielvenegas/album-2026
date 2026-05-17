@@ -1,30 +1,39 @@
-import { useNavigate } from 'react-router-dom'
-import { ScanLine } from 'lucide-react'
-import { COUNTRIES, TOTAL_STICKERS, getStickerCode } from '@/data/album'
-import { useCollection } from '@/store/useCollection'
-import { ProgressRing } from '@/components/ProgressRing'
+import { useNavigate } from "react-router-dom";
+import { COUNTRIES, TOTAL_STICKERS, getStickerCode } from "@/data/album";
+import { useCollection } from "@/store/useCollection";
+import { ProgressRing } from "@/components/ProgressRing";
 
 export function Dashboard() {
-  const navigate = useNavigate()
-  const { statuses } = useCollection()
+  const navigate = useNavigate();
+  const { statuses } = useCollection();
 
-  let owned = 0, duplicates = 0
+  let owned = 0,
+    duplicates = 0;
   for (const st of Object.values(statuses)) {
-    if (st === 'owned') owned++
-    else if (st === 'duplicate') { owned++; duplicates++ }
+    if (st === "owned") owned++;
+    else if (st === "duplicate") {
+      owned++;
+      duplicates++;
+    }
   }
-  const missing = TOTAL_STICKERS - owned
-  const pct = Math.round((owned / TOTAL_STICKERS) * 100)
+  const missing = TOTAL_STICKERS - owned;
+  const pct = Math.round((owned / TOTAL_STICKERS) * 100);
 
-  const worstCountries = COUNTRIES
-    .map(c => {
-      const codes = c.stickers.map(s => getStickerCode(c.code, s.number))
-      const own = codes.filter(code => statuses[code] === 'owned' || statuses[code] === 'duplicate').length
-      return { country: c, owned: own, missing: codes.length - own, pct: Math.round((own / codes.length) * 100) }
-    })
-    .filter(x => x.missing > 0)
+  const worstCountries = COUNTRIES.map((c) => {
+    const codes = c.stickers.map((s) => getStickerCode(c.code, s.number));
+    const own = codes.filter(
+      (code) => statuses[code] === "owned" || statuses[code] === "duplicate",
+    ).length;
+    return {
+      country: c,
+      owned: own,
+      missing: codes.length - own,
+      pct: Math.round((own / codes.length) * 100),
+    };
+  })
+    .filter((x) => x.missing > 0)
     .sort((a, b) => a.pct - b.pct)
-    .slice(0, 5)
+    .slice(0, 5);
 
   return (
     <div className="scroll-area flex-1 px-4 py-6">
@@ -35,7 +44,13 @@ export function Dashboard() {
 
       <div className="flex flex-col items-center mb-8">
         <div className="relative">
-          <ProgressRing percent={pct} size={160} stroke={10} color="#fbbf24" trackColor="#1e2b24" />
+          <ProgressRing
+            percent={pct}
+            size={160}
+            stroke={10}
+            color="#fbbf24"
+            trackColor="#1e2b24"
+          />
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className="text-3xl font-bold text-gold">{pct}%</span>
             <span className="text-xs text-muted">completo</span>
@@ -51,10 +66,12 @@ export function Dashboard() {
 
       <div className="mb-8">
         <div className="flex justify-between text-xs text-muted mb-2">
-          <span>{owned} de {TOTAL_STICKERS} figurinhas</span>
+          <span>
+            {owned} de {TOTAL_STICKERS} figurinhas
+          </span>
           <span>{missing} faltando</span>
         </div>
-        <div className="h-2 bg-border rounded-full overflow-hidden">
+        <div className="h-2 bg-border rounded-full ">
           <div
             className="h-full bg-gradient-to-r from-gold to-owned rounded-full transition-all duration-700"
             style={{ width: `${pct}%` }}
@@ -76,10 +93,15 @@ export function Dashboard() {
               >
                 <span className="text-2xl">{country.flag}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-text">{country.name}</p>
+                  <p className="text-sm font-medium text-text">
+                    {country.name}
+                  </p>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <div className="flex-1 h-1 bg-border rounded-full overflow-hidden">
-                      <div className="h-full bg-gold/60 rounded-full" style={{ width: `${p}%` }} />
+                    <div className="flex-1 h-1 bg-border rounded-full ">
+                      <div
+                        className="h-full bg-gold/60 rounded-full"
+                        style={{ width: `${p}%` }}
+                      />
                     </div>
                     <span className="text-xs text-muted shrink-0">{p}%</span>
                   </div>
@@ -90,23 +112,23 @@ export function Dashboard() {
           </div>
         </div>
       )}
-
-      <button
-        onClick={() => navigate('/scanner')}
-        className="chip-press w-full bg-gradient-to-r from-gold/20 to-owned/20 border border-gold/30 rounded-2xl py-4 flex items-center justify-center gap-2"
-      >
-        <ScanLine size={18} className="text-gold" />
-        <span className="text-sm font-semibold text-gold">Escanear figurinhas com IA</span>
-      </button>
     </div>
-  )
+  );
 }
 
-function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
+function StatCard({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: number;
+  color: string;
+}) {
   return (
     <div className="bg-surface border border-border rounded-2xl p-3 text-center">
       <p className={`text-2xl font-bold ${color}`}>{value}</p>
       <p className="text-[11px] text-muted mt-0.5">{label}</p>
     </div>
-  )
+  );
 }

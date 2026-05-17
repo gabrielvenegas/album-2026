@@ -1,11 +1,11 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { BottomNav } from '@/components/BottomNav'
-import { Dashboard } from '@/pages/Dashboard'
-import { Countries } from '@/pages/Countries'
-import { CountryDetail } from '@/pages/CountryDetail'
-import { Duplicates } from '@/pages/Duplicates'
-import { Scanner } from '@/pages/Scanner'
-import { Settings } from '@/pages/Settings'
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BottomNav } from "@/components/BottomNav";
+import { Dashboard } from "@/pages/Dashboard";
+import { Countries } from "@/pages/Countries";
+import { CountryDetail } from "@/pages/CountryDetail";
+import { Duplicates } from "@/pages/Duplicates";
+import { Scanner } from "@/pages/Scanner";
+import { Settings } from "@/pages/Settings";
 
 export default function App() {
   return (
@@ -21,8 +21,8 @@ export default function App() {
             <Route path="/config" element={<Settings />} />
           </Routes>
         </div>
-        <BottomNav />
       </div>
+      <BottomNav />
     </BrowserRouter>
-  )
+  );
 }
