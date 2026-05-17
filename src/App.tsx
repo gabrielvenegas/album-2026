@@ -11,7 +11,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <div className="app-shell">
-        <div className="flex-1 flex flex-col min-h-0">
+        <div className="app-content flex-1 flex flex-col min-h-0">
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/paises" element={<Countries />} />

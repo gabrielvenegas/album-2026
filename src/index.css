@@ -27,8 +27,8 @@ html {
 }
 
 html, body {
-  /* background fills the status-bar and home-indicator zones */
-  background: #080c0a;
+  /* iOS may paint the home-indicator strip from the document background. */
+  background: #111816;
   overscroll-behavior: none;
   overflow: hidden;
 }
@@ -46,9 +46,14 @@ body {
   inset: 0;
   display: flex;
   flex-direction: column;
-  background: #080c0a;
+  background: #111816;
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: var(--tabbar-height);
+  overflow: hidden;
+}
+
+.app-content {
+  background: #080c0a;
   overflow: hidden;
 }
 
