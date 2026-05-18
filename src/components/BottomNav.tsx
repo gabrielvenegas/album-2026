@@ -19,8 +19,8 @@ export function BottomNav() {
   );
 
   return (
-    <nav className="bottom-nav border-t border-border">
-      <div className="bottom-nav-items flex">
+    <nav className="bottom-nav border-t border-[#25372f] shadow-[0_-14px_30px_rgba(0,0,0,0.28)]">
+      <div className="bottom-nav-items flex gap-1">
         {TABS.map((tab) => {
           const isActive = tab === active;
           const isScanner = tab.path === "/scanner";
@@ -29,22 +29,17 @@ export function BottomNav() {
             <button
               key={tab.path}
               onClick={() => navigate(tab.path)}
-              className={`flex-1 flex flex-col items-center justify-center gap-1 transition-colors ${
+              className={`flex-1 flex flex-col items-center justify-center gap-1 rounded-xl transition-all ${
                 isScanner
-                  ? "bg-gradient-to-r from-gold via-amber-300 to-gold bg-[length:200%_200%] bg-clip-text text-transparent"
+                  ? "bg-gold text-bg shadow-[0_8px_18px_rgba(159,134,84,0.18)]"
                   : isActive
-                    ? "text-gold"
+                    ? "bg-[#1b2923] text-gold"
                     : "text-muted"
               }`}
             >
               <tab.Icon
-                size={isScanner ? 26 : 20}
+                size={isScanner ? 24 : 20}
                 strokeWidth={isActive || isScanner ? 2.5 : 1.8}
-                className={
-                  isScanner
-                    ? "text-gold drop-shadow-[0_0_8px_rgba(245,190,80,0.65)]"
-                    : undefined
-                }
               />
               <span className="text-[10px] font-medium leading-none">
                 {tab.label}

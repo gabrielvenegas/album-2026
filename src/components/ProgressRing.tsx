@@ -6,7 +6,7 @@ interface Props {
   trackColor?: string
 }
 
-export function ProgressRing({ percent, size = 48, stroke = 4, color = '#fbbf24', trackColor = '#1e2b24' }: Props) {
+export function ProgressRing({ percent, size = 48, stroke = 4, color = '#ffb238', trackColor = '#1e2b24' }: Props) {
   const r = (size - stroke) / 2
   const circ = 2 * Math.PI * r
   const offset = circ - (percent / 100) * circ

@@ -13,31 +13,49 @@ export function CountryCard({ country }: Props) {
   const { owned, duplicates, missing } = useCountryStats(codes)
   const total = country.stickers.length
   const pct = Math.round((owned / total) * 100)
+  const isComplete = pct === 100
 
   return (
     <button
       onClick={() => navigate(`/paises/${country.code}`)}
-      className="chip-press flex flex-col items-center gap-2 bg-surface border border-border rounded-2xl p-3 text-left w-full"
+      className="chip-press sticker-tile relative flex min-h-[138px] w-full flex-col items-center gap-2 overflow-hidden rounded-xl p-2.5 text-left"
     >
-      <div className="relative">
-        <ProgressRing percent={pct} size={52} stroke={3} />
-        <span className="absolute inset-0 flex items-center justify-center text-xl" style={{ marginTop: 2 }}>
+      <span className="absolute left-2 top-2 rounded-md bg-white/10 px-1.5 py-0.5 text-[9px] font-black text-text">
+        {country.code}
+      </span>
+      <span className="absolute right-2 top-2 rounded-md bg-gold px-1.5 py-0.5 text-[9px] font-black text-[#071011]">
+        {pct}%
+      </span>
+
+      <div className="relative mt-5">
+        <ProgressRing
+          percent={pct}
+          size={58}
+          stroke={4}
+          color={isComplete ? '#00d675' : '#ffb238'}
+          trackColor="rgba(23,33,29,0.14)"
+        />
+        <span className="absolute inset-0 flex items-center justify-center text-2xl" style={{ marginTop: 2 }}>
           {country.flag}
         </span>
       </div>
+
       <div className="w-full text-center">
-        <p className="text-[11px] font-semibold text-text leading-tight truncate">{country.name}</p>
-        <p className="text-[9px] text-muted mt-0.5">{country.group === 'Extras' ? 'Extras' : `Gr. ${country.group}`} · {pct}%</p>
+        <p className="text-[12px] font-black leading-tight text-text line-clamp-2">{country.name}</p>
+        <p className="mt-0.5 text-[9px] font-bold uppercase tracking-wide text-muted">
+          {country.group === 'Extras' ? 'Extras' : `Grupo ${country.group}`}
+        </p>
       </div>
+
       {(missing > 0 || duplicates > 0) && (
-        <div className="flex gap-1.5 flex-wrap justify-center">
+        <div className="mt-auto flex flex-wrap justify-center gap-1.5">
           {missing > 0 && (
-            <span className="text-[9px] bg-missing/20 text-muted px-1.5 py-0.5 rounded-full">
+            <span className="rounded-md bg-white/10 px-1.5 py-0.5 text-[9px] font-black text-muted">
               -{missing}
             </span>
           )}
           {duplicates > 0 && (
-            <span className="text-[9px] bg-duplicate/15 text-duplicate px-1.5 py-0.5 rounded-full">
+            <span className="rounded-md bg-duplicate px-1.5 py-0.5 text-[9px] font-black text-white">
               x{duplicates}
             </span>
           )}

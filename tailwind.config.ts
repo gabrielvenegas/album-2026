@@ -5,15 +5,15 @@ export default {
   theme: {
     extend: {
       colors: {
-        bg: "#111816",
-        surface: "#111816",
-        border: "#1e2b24",
-        owned: "#22c55e",
-        duplicate: "#f97316",
-        missing: "#374151",
-        gold: "#fbbf24",
-        text: "#f0fdf4",
-        muted: "#6b7280",
+        bg: "#070b0d",
+        surface: "#111719",
+        border: "#20282c",
+        owned: "#00d675",
+        duplicate: "#ff7a2f",
+        missing: "#3a4247",
+        gold: "#ffb238",
+        text: "#fff4d7",
+        muted: "#7b828a",
       },
       fontFamily: {
         sans: [

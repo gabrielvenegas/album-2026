@@ -14,6 +14,8 @@ import {
 import { useCollection } from "@/store/useCollection";
 import { testConnection } from "@/lib/ai";
 
+type SettingsTab = "general" | "spending";
+
 export function Settings() {
   const {
     apiKey,
@@ -38,6 +40,7 @@ export function Settings() {
   const [expenseDescription, setExpenseDescription] = useState("");
   const [expenseAmount, setExpenseAmount] = useState("");
   const [toast, setToast] = useState("");
+  const [activeTab, setActiveTab] = useState<SettingsTab>("general");
   const fileRef = useRef<HTMLInputElement>(null);
   const totalSpent = spendingEntries.reduce(
     (sum, entry) => sum + entry.amount,
@@ -119,275 +122,304 @@ export function Settings() {
   }
 
   return (
-    <div className="scroll-area flex-1 px-4 py-6">
+    <div className="scroll-area album-page flex-1 px-4 py-6">
       {toast && (
         <div className="toast-safe fixed left-4 right-4 z-50 bg-owned text-white text-sm font-semibold rounded-xl px-4 py-3 text-center shadow-lg">
           {toast}
         </div>
       )}
 
-      <h1 className="text-xl font-bold text-text mb-6">Configurações</h1>
-
-      <Section title="Gastos do álbum" Icon={Receipt}>
-        <div className="flex items-end justify-between gap-3 mb-4">
-          <div>
-            <p className="text-xs text-muted">Total gasto</p>
-            <p className="text-2xl font-bold text-gold">
-              {formatCurrency(totalSpent)}
-            </p>
-          </div>
-          <p className="text-xs text-muted text-right">
-            {spendingEntries.length}{" "}
-            {spendingEntries.length === 1 ? "registro" : "registros"}
-          </p>
-        </div>
-
-        <div className="grid grid-cols-2 gap-2 mb-2">
-          <label className="min-w-0">
-            <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted mb-1">
-              Data
-            </span>
-            <input
-              type="date"
-              value={expenseDate}
-              onChange={(e) => setExpenseDate(e.target.value)}
-              className="w-full bg-bg border border-border rounded-xl px-3 py-2.5 text-sm text-text outline-none focus:border-gold/50 transition-colors"
-            />
-          </label>
-          <label className="min-w-0">
-            <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted mb-1">
-              Valor
-            </span>
-            <input
-              type="number"
-              inputMode="decimal"
-              min="0"
-              step="0.01"
-              value={expenseAmount}
-              onChange={(e) => setExpenseAmount(e.target.value)}
-              placeholder="0,00"
-              className="w-full bg-bg border border-border rounded-xl px-3 py-2.5 text-sm text-text placeholder-muted outline-none focus:border-gold/50 transition-colors"
-            />
-          </label>
-        </div>
-
-        <label className="block mb-3">
-          <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted mb-1">
-            Descrição
-          </span>
-          <input
-            type="text"
-            value={expenseDescription}
-            onChange={(e) => setExpenseDescription(e.target.value)}
-            placeholder="Pacotinhos, caixa, troca..."
-            className="w-full bg-bg border border-border rounded-xl px-3 py-2.5 text-sm text-text placeholder-muted outline-none focus:border-gold/50 transition-colors"
-          />
-        </label>
-
-        <button
-          onClick={handleAddExpense}
-          className="chip-press w-full bg-owned/15 border border-owned/30 text-owned text-sm font-semibold rounded-xl py-3 flex items-center justify-center gap-1.5 mb-4"
-        >
-          <Plus size={14} /> Adicionar gasto
-        </button>
-
-        {spendingEntries.length > 0 ? (
-          <div className="space-y-2">
-            {spendingEntries.map((entry) => (
-              <div
-                key={entry.id}
-                className="flex items-center gap-3 bg-bg border border-border rounded-xl px-3 py-2.5"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-text truncate">
-                    {entry.description}
-                  </p>
-                  <p className="text-xs text-muted">
-                    {formatDisplayDate(entry.date)}
-                  </p>
-                </div>
-                <p className="text-sm font-bold text-gold shrink-0">
-                  {formatCurrency(entry.amount)}
-                </p>
-                <button
-                  aria-label={`Remover ${entry.description}`}
-                  onClick={() => deleteSpendingEntry(entry.id)}
-                  className="chip-press h-8 w-8 shrink-0 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            ))}
-
-            {!confirmClearSpending ? (
-              <button
-                onClick={() => setConfirmClearSpending(true)}
-                className="chip-press w-full bg-surface border border-border text-muted text-xs font-semibold rounded-xl py-2.5 mt-3"
-              >
-                Limpar histórico de gastos
-              </button>
-            ) : (
-              <div className="flex gap-2 mt-3">
-                <button
-                  onClick={() => {
-                    clearSpendingEntries();
-                    setConfirmClearSpending(false);
-                    showToast("Gastos removidos.");
-                  }}
-                  className="chip-press flex-1 bg-red-500 text-white text-xs font-bold rounded-xl py-2.5"
-                >
-                  Apagar gastos
-                </button>
-                <button
-                  onClick={() => setConfirmClearSpending(false)}
-                  className="chip-press flex-1 bg-surface border border-border text-muted text-xs rounded-xl py-2.5"
-                >
-                  Cancelar
-                </button>
-              </div>
-            )}
-          </div>
-        ) : (
-          <p className="text-center text-xs text-muted bg-bg border border-dashed border-border rounded-xl px-3 py-4">
-            Nenhum gasto registrado ainda.
-          </p>
-        )}
-      </Section>
-
-      <Section title="IA · Chave de API" Icon={Key}>
-        <p className="text-xs text-muted mb-3">
-          Insira sua chave do Mulerouter para usar as funcionalidades de IA
-          (escaneamento, previsão, mensagens).
+      <div className="album-strip mb-6 rounded-xl px-4 py-4">
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gold">
+          Preferências
         </p>
-        <input
-          type="password"
-          value={keyInput}
-          onChange={(e) => setKeyInput(e.target.value)}
-          placeholder="Bearer token do Mulerouter..."
-          className="w-full bg-bg border border-border rounded-xl px-4 py-3 text-sm text-text placeholder-muted outline-none focus:border-gold/50 transition-colors mb-3 font-mono"
-        />
-        <div className="flex gap-2">
-          <button
-            onClick={handleSaveKey}
-            className="chip-press flex-1 bg-owned/15 border border-owned/30 text-owned text-sm font-semibold rounded-xl py-2.5"
-          >
-            Salvar
-          </button>
-          <button
-            onClick={handleTestConnection}
-            disabled={testing}
-            className="chip-press flex-1 bg-surface border border-border text-muted text-sm font-semibold rounded-xl py-2.5 disabled:opacity-50"
-          >
-            {testing ? "Testando..." : "Testar conexão"}
-          </button>
-        </div>
-        {testResult && (
-          <div
-            className={`flex items-center justify-center gap-1.5 text-xs mt-2 ${testResult === "ok" ? "text-owned" : "text-red-400"}`}
-          >
-            {testResult === "ok" ? (
-              <>
-                <CheckCircle size={13} /> Conexão bem-sucedida!
-              </>
-            ) : (
-              <>
-                <XCircle size={13} /> Falha. Verifique a chave.
-              </>
-            )}
-          </div>
-        )}
-        {testError && (
-          <p className="mt-2 break-words text-center text-xs text-red-400">
-            {testError}
-          </p>
-        )}
-      </Section>
+        <h1 className="mt-1 text-2xl font-black leading-none text-text">
+          Configurações
+        </h1>
+        <p className="mt-2 text-xs font-semibold text-muted">
+          Dados, IA e comportamento do álbum
+        </p>
+      </div>
 
-      <Section title="Comportamento" Icon={SlidersHorizontal}>
-        <label className="flex items-center justify-between gap-3 cursor-pointer select-none">
-          <div>
-            <p className="text-sm font-medium text-text">
-              Confirmar antes de selecionar
-            </p>
-            <p className="text-xs text-muted mt-0.5">
-              Pede confirmação ao tocar em uma figurinha
+      <div className="mb-6 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border">
+        <TabButton
+          active={activeTab === "general"}
+          Icon={SlidersHorizontal}
+          label="Geral"
+          onClick={() => setActiveTab("general")}
+        />
+        <TabButton
+          active={activeTab === "spending"}
+          Icon={Receipt}
+          label="Gastos"
+          onClick={() => setActiveTab("spending")}
+        />
+      </div>
+
+      {activeTab === "spending" ? (
+        <Section title="Gastos do álbum" Icon={Receipt}>
+          <div className="flex items-end justify-between gap-3 mb-4">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wide text-muted">Total gasto</p>
+              <p className="text-2xl font-black text-gold">
+                {formatCurrency(totalSpent)}
+              </p>
+            </div>
+            <p className="rounded-lg bg-surface/10 px-2 py-1 text-xs font-black text-muted text-right">
+              {spendingEntries.length}{" "}
+              {spendingEntries.length === 1 ? "registro" : "registros"}
             </p>
           </div>
-          <button
-            role="switch"
-            aria-checked={confirmBeforeSelect}
-            onClick={() => setConfirmBeforeSelect(!confirmBeforeSelect)}
-            className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
-              confirmBeforeSelect ? "bg-owned" : "bg-border"
-            }`}
-          >
-            <span
-              className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform duration-200 ${
-                confirmBeforeSelect ? "translate-x-5" : "translate-x-0"
-              }`}
+
+          <div className="grid grid-cols-2 gap-2 mb-2">
+            <label className="min-w-0">
+              <span className="block text-[11px] font-black uppercase tracking-wide text-muted mb-1">
+                Data
+              </span>
+              <input
+                type="date"
+                value={expenseDate}
+                onChange={(e) => setExpenseDate(e.target.value)}
+                className="w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm font-semibold text-text outline-none focus:border-gold transition-colors"
+              />
+            </label>
+            <label className="min-w-0">
+              <span className="block text-[11px] font-black uppercase tracking-wide text-muted mb-1">
+                Valor
+              </span>
+              <input
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                value={expenseAmount}
+                onChange={(e) => setExpenseAmount(e.target.value)}
+                placeholder="0,00"
+                className="w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm font-semibold text-text placeholder:text-muted/55 outline-none focus:border-gold transition-colors"
+              />
+            </label>
+          </div>
+
+          <label className="block mb-3">
+            <span className="block text-[11px] font-black uppercase tracking-wide text-muted mb-1">
+              Descrição
+            </span>
+            <input
+              type="text"
+              value={expenseDescription}
+              onChange={(e) => setExpenseDescription(e.target.value)}
+              placeholder="Pacotinhos, caixa, troca..."
+              className="w-full rounded-xl border border-white/10 bg-white/10 px-3 py-2.5 text-sm font-semibold text-text placeholder:text-muted/55 outline-none focus:border-gold transition-colors"
             />
-          </button>
-        </label>
-      </Section>
+          </label>
 
-      <Section title="Dados da coleção" Icon={Download}>
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".json"
-          onChange={handleImport}
-          className="hidden"
-        />
-        <div className="flex gap-2">
           <button
-            onClick={handleExport}
-            className="chip-press flex-1 bg-surface border border-border text-muted text-sm font-semibold rounded-xl py-3 flex items-center justify-center gap-1.5"
+            onClick={handleAddExpense}
+            className="chip-press w-full bg-owned text-white text-sm font-black rounded-xl py-3 flex items-center justify-center gap-1.5 mb-4"
           >
-            <Upload size={14} /> Exportar
+            <Plus size={14} /> Adicionar gasto
           </button>
-          <button
-            onClick={() => fileRef.current?.click()}
-            className="chip-press flex-1 bg-surface border border-border text-muted text-sm font-semibold rounded-xl py-3 flex items-center justify-center gap-1.5"
-          >
-            <Download size={14} /> Importar
-          </button>
-        </div>
-      </Section>
 
-      <Section title="Zona de perigo" Icon={AlertTriangle}>
-        {!confirmReset ? (
-          <button
-            onClick={() => setConfirmReset(true)}
-            className="chip-press w-full bg-red-500/10 border border-red-500/30 text-red-400 text-sm font-semibold rounded-xl py-3"
-          >
-            Resetar toda a coleção
-          </button>
-        ) : (
-          <div className="space-y-2">
-            <p className="text-sm text-red-400 text-center">
-              Tem certeza? Isso apaga tudo.
+          {spendingEntries.length > 0 ? (
+            <div className="space-y-2">
+              {spendingEntries.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/10 px-3 py-2.5"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-black text-text truncate">
+                      {entry.description}
+                    </p>
+                    <p className="text-xs font-semibold text-muted">
+                      {formatDisplayDate(entry.date)}
+                    </p>
+                  </div>
+                  <p className="text-sm font-black text-gold shrink-0">
+                    {formatCurrency(entry.amount)}
+                  </p>
+                  <button
+                    aria-label={`Remover ${entry.description}`}
+                    onClick={() => deleteSpendingEntry(entry.id)}
+                    className="chip-press h-8 w-8 shrink-0 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))}
+
+              {!confirmClearSpending ? (
+                <button
+                  onClick={() => setConfirmClearSpending(true)}
+                  className="chip-press w-full rounded-xl border border-white/10 bg-white/10 py-2.5 mt-3 text-xs font-black text-muted"
+                >
+                  Limpar histórico de gastos
+                </button>
+              ) : (
+                <div className="flex gap-2 mt-3">
+                  <button
+                    onClick={() => {
+                      clearSpendingEntries();
+                      setConfirmClearSpending(false);
+                      showToast("Gastos removidos.");
+                    }}
+                    className="chip-press flex-1 bg-red-500 text-white text-xs font-bold rounded-xl py-2.5"
+                  >
+                    Apagar gastos
+                  </button>
+                  <button
+                    onClick={() => setConfirmClearSpending(false)}
+                    className="chip-press flex-1 rounded-xl border border-white/10 bg-white/10 py-2.5 text-xs font-bold text-muted"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-center text-xs font-semibold text-muted bg-white/10 border border-dashed border-white/10 rounded-xl px-3 py-4">
+              Nenhum gasto registrado ainda.
             </p>
+          )}
+        </Section>
+      ) : (
+        <>
+          <Section title="IA · Chave de API" Icon={Key}>
+            <p className="text-xs font-semibold text-muted mb-3">
+              Insira sua chave do Mulerouter para usar as funcionalidades de IA
+              (escaneamento, previsão, mensagens).
+            </p>
+            <input
+              type="password"
+              value={keyInput}
+              onChange={(e) => setKeyInput(e.target.value)}
+              placeholder="Bearer token do Mulerouter..."
+              className="w-full rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-semibold text-text placeholder:text-muted/55 outline-none focus:border-gold transition-colors mb-3 font-mono"
+            />
             <div className="flex gap-2">
               <button
-                onClick={() => {
-                  resetAll();
-                  setConfirmReset(false);
-                  showToast("Coleção resetada.");
-                }}
-                className="chip-press flex-1 bg-red-500 text-white text-sm font-bold rounded-xl py-3"
+                onClick={handleSaveKey}
+                className="chip-press flex-1 bg-owned text-white text-sm font-black rounded-xl py-2.5"
               >
-                Sim, apagar tudo
+                Salvar
               </button>
               <button
-                onClick={() => setConfirmReset(false)}
-                className="chip-press flex-1 bg-surface border border-border text-muted text-sm rounded-xl py-3"
+                onClick={handleTestConnection}
+                disabled={testing}
+                className="chip-press flex-1 rounded-xl border border-white/10 bg-white/10 py-2.5 text-sm font-black text-muted disabled:opacity-50"
               >
-                Cancelar
+                {testing ? "Testando..." : "Testar conexão"}
               </button>
             </div>
-          </div>
-        )}
-      </Section>
+            {testResult && (
+              <div
+                className={`flex items-center justify-center gap-1.5 text-xs mt-2 ${testResult === "ok" ? "text-owned" : "text-red-400"}`}
+              >
+                {testResult === "ok" ? (
+                  <>
+                    <CheckCircle size={13} /> Conexão bem-sucedida!
+                  </>
+                ) : (
+                  <>
+                    <XCircle size={13} /> Falha. Verifique a chave.
+                  </>
+                )}
+              </div>
+            )}
+            {testError && (
+              <p className="mt-2 break-words text-center text-xs text-red-400">
+                {testError}
+              </p>
+            )}
+          </Section>
+
+          <Section title="Comportamento" Icon={SlidersHorizontal}>
+            <label className="flex items-center justify-between gap-3 cursor-pointer select-none">
+              <div>
+                <p className="text-sm font-black text-text">
+                  Confirmar antes de selecionar
+                </p>
+                <p className="text-xs font-semibold text-muted mt-0.5">
+                  Pede confirmação ao tocar em uma figurinha
+                </p>
+              </div>
+              <button
+                role="switch"
+                aria-checked={confirmBeforeSelect}
+                onClick={() => setConfirmBeforeSelect(!confirmBeforeSelect)}
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
+                  confirmBeforeSelect ? "bg-owned" : "bg-border"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform duration-200 ${
+                    confirmBeforeSelect ? "translate-x-5" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </label>
+          </Section>
+
+          <Section title="Dados da coleção" Icon={Download}>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".json"
+              onChange={handleImport}
+              className="hidden"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={handleExport}
+                className="chip-press flex-1 rounded-xl border border-white/10 bg-white/10 py-3 text-sm font-black text-muted flex items-center justify-center gap-1.5"
+              >
+                <Upload size={14} /> Exportar
+              </button>
+              <button
+                onClick={() => fileRef.current?.click()}
+                className="chip-press flex-1 rounded-xl border border-white/10 bg-white/10 py-3 text-sm font-black text-muted flex items-center justify-center gap-1.5"
+              >
+                <Download size={14} /> Importar
+              </button>
+            </div>
+          </Section>
+
+          <Section title="Zona de perigo" Icon={AlertTriangle}>
+            {!confirmReset ? (
+              <button
+                onClick={() => setConfirmReset(true)}
+                className="chip-press w-full bg-red-500/10 border border-red-500/30 text-red-400 text-sm font-semibold rounded-xl py-3"
+              >
+                Resetar toda a coleção
+              </button>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-sm text-red-400 text-center">
+                  Tem certeza? Isso apaga tudo.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      resetAll();
+                      setConfirmReset(false);
+                      showToast("Coleção resetada.");
+                    }}
+                    className="chip-press flex-1 bg-red-500 text-white text-sm font-bold rounded-xl py-3"
+                  >
+                    Sim, apagar tudo
+                  </button>
+                  <button
+                    onClick={() => setConfirmReset(false)}
+                    className="chip-press flex-1 rounded-xl border border-white/10 bg-white/10 py-3 text-sm font-bold text-muted"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+          </Section>
+        </>
+      )}
 
       <p className="text-center text-xs text-muted mt-6 pb-2">
         Álbum Copa 2026 · Dados salvos localmente
@@ -408,15 +440,39 @@ function Section({
   return (
     <div className="mb-6">
       <div className="flex items-center gap-2 mb-3">
-        <Icon size={13} className="text-muted" />
-        <h2 className="text-xs font-semibold text-muted uppercase tracking-widest">
+        <Icon size={13} className="text-gold" />
+        <h2 className="album-section-label">
           {title}
         </h2>
       </div>
-      <div className="bg-surface border border-border rounded-2xl p-4">
+      <div className="sticker-tile rounded-xl p-4">
         {children}
       </div>
     </div>
+  );
+}
+
+function TabButton({
+  active,
+  Icon,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  Icon: React.ElementType;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`chip-press flex items-center justify-center gap-2 px-3 py-3 text-sm font-black transition-colors ${
+        active ? "bg-gold text-bg" : "bg-surface text-muted"
+      }`}
+    >
+      <Icon size={15} strokeWidth={2.4} />
+      {label}
+    </button>
   );
 }
 

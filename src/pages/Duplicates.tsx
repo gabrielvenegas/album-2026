@@ -1,162 +1,273 @@
-import { useRef, useState } from 'react'
-import { ImageDown, ClipboardCopy, Check, Bot, Trophy, Repeat2 } from 'lucide-react'
-import { COUNTRIES, getStickerCode } from '@/data/album'
-import { useCollection } from '@/store/useCollection'
-import { exportElementAsImage, formatDuplicatesAsText } from '@/lib/export'
-import { generateSwapMessage } from '@/lib/ai'
+import { useRef, useState } from "react";
+import {
+  ClipboardCopy,
+  Check,
+  Trophy,
+  Repeat2,
+  Wand2,
+} from "lucide-react";
+import { COUNTRIES, getStickerCode } from "@/data/album";
+import { useCollection } from "@/store/useCollection";
+import { formatDuplicatesAsText } from "@/lib/export";
+import { parseDuplicateListWithAi } from "@/lib/ai";
+
+const VALID_STICKER_CODES = new Set(
+  COUNTRIES.flatMap((country) =>
+    country.stickers.map((sticker) => getStickerCode(country.code, sticker)),
+  ),
+);
 
 export function Duplicates() {
-  const { statuses, dupCounts, apiKey } = useCollection()
-  const exportRef = useRef<HTMLDivElement>(null)
-  const [aiMsg, setAiMsg] = useState('')
-  const [aiLoading, setAiLoading] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const [friendInput, setFriendInput] = useState('')
+  const { statuses, dupCounts, apiKey, decrementDup, setStatus } =
+    useCollection();
+  const exportRef = useRef<HTMLDivElement>(null);
+  const [aiParsing, setAiParsing] = useState(false);
+  const [aiParseError, setAiParseError] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [friendInput, setFriendInput] = useState("");
+  const [aiParsedDuplicates, setAiParsedDuplicates] =
+    useState<Map<string, number> | null>(null);
+  const [toast, setToast] = useState("");
 
-  const groups = COUNTRIES
-    .map(c => {
-      const dups = c.stickers
-        .map(s => {
-          const code = getStickerCode(c.code, s)
-          return statuses[code] === 'duplicate' ? { code, count: dupCounts[code] ?? 2 } : null
-        })
-        .filter(Boolean) as { code: string; count: number }[]
-      return { country: c, stickers: dups }
-    })
-    .filter(g => g.stickers.length > 0)
+  const groups = COUNTRIES.map((c) => {
+    const dups = c.stickers
+      .map((s) => {
+        const code = getStickerCode(c.code, s);
+        return statuses[code] === "duplicate"
+          ? { code, count: dupCounts[code] ?? 2 }
+          : null;
+      })
+      .filter(Boolean) as { code: string; count: number }[];
+    return { country: c, stickers: dups };
+  }).filter((g) => g.stickers.length > 0);
 
-  const totalDups = groups.reduce((sum, g) => sum + g.stickers.reduce((s, x) => s + (x.count - 1), 0), 0)
-  const myDuplicateCounts = new Map(groups.flatMap(g => g.stickers.map(s => [s.code, Math.max(0, s.count - 1)] as const)))
-  const friendDuplicateCounts = parseDuplicateText(friendInput)
-  const friendDuplicateCodes = [...friendDuplicateCounts.keys()]
-  const friendCanGive = friendDuplicateCodes.filter(code => !hasSticker(code))
-  const iCanGive = [...myDuplicateCounts.keys()].filter(code => !friendDuplicateCounts.has(code))
+  const totalDups = groups.reduce(
+    (sum, g) => sum + g.stickers.reduce((s, x) => s + (x.count - 1), 0),
+    0,
+  );
+  const myDuplicateCounts = new Map(
+    groups.flatMap((g) =>
+      g.stickers.map((s) => [s.code, Math.max(0, s.count - 1)] as const),
+    ),
+  );
+  const localFriendDuplicateCounts = parseDuplicateText(friendInput);
+  const friendDuplicateCounts =
+    aiParsedDuplicates ?? localFriendDuplicateCounts;
+  const friendDuplicateCodes = [...friendDuplicateCounts.keys()];
+  const friendCanGive = friendDuplicateCodes.filter(
+    (code) => !hasSticker(code),
+  );
+  const iCanGive = [...myDuplicateCounts.keys()].filter(
+    (code) => !friendDuplicateCounts.has(code),
+  );
   const suggestedSwaps = friendCanGive
     .slice(0, iCanGive.length)
-    .map((receive, i) => ({ receive, give: iCanGive[i] }))
+    .map((receive, i) => ({ receive, give: iCanGive[i] }));
 
-  async function handleExportImage() {
-    if (!exportRef.current) return
-    await exportElementAsImage(exportRef.current, 'repetidas-copa-2026.png')
+  function showToast(msg: string) {
+    setToast(msg);
+    setTimeout(() => setToast(""), 2500);
   }
 
   function handleCopyText() {
     const text = formatDuplicatesAsText(
-      groups.map(g => ({ country: g.country.name, flag: g.country.flag, stickers: g.stickers }))
-    )
+      groups.map((g) => ({
+        country: g.country.name,
+        flag: g.country.flag,
+        stickers: g.stickers,
+      })),
+    );
     navigator.clipboard.writeText(text).then(() => {
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    })
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
   }
 
-  async function handleGenerateMessage() {
-    if (!apiKey) { setAiMsg('Configure sua chave de API em Configurações.'); return }
-    setAiLoading(true)
-    setAiMsg('')
-    try {
-      const all = groups.flatMap(g => g.stickers)
-      const msg = await generateSwapMessage(apiKey, all)
-      setAiMsg(msg)
-    } catch (e) {
-      setAiMsg(`Erro: ${e instanceof Error ? e.message : 'Falha na conexão'}`)
-    } finally {
-      setAiLoading(false)
+  async function handleAnalyzeFriendList() {
+    if (!friendInput.trim()) return;
+    if (!apiKey) {
+      setAiParseError("Configure sua chave de API em Configurações.");
+      return;
     }
+    setAiParsing(true);
+    setAiParseError("");
+    try {
+      const codes = await parseDuplicateListWithAi(apiKey, friendInput);
+      const parsed = countCodes(codes);
+      setAiParsedDuplicates(parsed);
+      showToast(`${parsed.size} tipo(s) encontrados pela IA.`);
+    } catch (e) {
+      setAiParseError(
+        `Erro: ${e instanceof Error ? e.message : "Falha na conexão"}`,
+      );
+    } finally {
+      setAiParsing(false);
+    }
+  }
+
+  function handleAutoExchange() {
+    if (!suggestedSwaps.length) return;
+    for (const swap of suggestedSwaps) {
+      decrementDup(swap.give);
+      setStatus(swap.receive, "owned");
+    }
+    setAiParsedDuplicates(null);
+    setFriendInput("");
+    showToast(`${suggestedSwaps.length} troca(s) aplicadas ao álbum.`);
   }
 
   if (groups.length === 0) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center px-8">
-        <p className="text-lg font-semibold text-text">Sem repetidas</p>
-        <p className="text-sm text-muted">Marque figurinhas como repetidas tocando duas vezes em um país.</p>
+      <div className="album-page flex-1 flex flex-col items-center justify-center gap-3 text-center px-8">
+        <div className="sticker-tile rounded-xl px-6 py-5">
+          <p className="text-lg font-black text-text">Sem repetidas</p>
+          <p className="mt-2 text-sm font-semibold text-muted">
+            Marque figurinhas como repetidas tocando duas vezes em um país.
+          </p>
+        </div>
       </div>
-    )
+    );
   }
 
   return (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div className="album-page flex flex-col flex-1 min-h-0">
+      {toast && (
+        <div className="toast-safe fixed left-4 right-4 z-50 bg-owned text-white text-sm font-semibold rounded-xl px-4 py-3 text-center shadow-lg">
+          {toast}
+        </div>
+      )}
+
       <div className="flex-none px-4 pt-5 pb-3">
-        <h1 className="text-xl font-bold text-text">Repetidas</h1>
-        <p className="text-sm text-muted">{totalDups} figurinhas para trocar</p>
+        <div className="album-strip rounded-xl px-4 py-4">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gold">
+            Área de trocas
+          </p>
+          <div className="mt-1 flex items-end justify-between gap-3">
+            <div>
+              <h1 className="text-2xl font-black leading-none text-text">
+                Repetidas
+              </h1>
+              <p className="mt-2 text-xs font-semibold text-muted">
+                Figurinhas prontas para negociar
+              </p>
+            </div>
+            <span className="rounded-lg bg-duplicate px-2.5 py-1 text-sm font-black text-white">
+              {totalDups}
+            </span>
+          </div>
+        </div>
       </div>
 
       <div className="scroll-area flex-1 px-4 pb-4">
         <div className="flex gap-2 mb-4">
           <button
-            onClick={handleExportImage}
-            className="chip-press flex-1 bg-gold/15 border border-gold/30 text-gold text-xs font-semibold rounded-xl py-2.5 flex items-center justify-center gap-1.5"
-          >
-            <ImageDown size={14} /> Exportar imagem
-          </button>
-          <button
             onClick={handleCopyText}
-            className="chip-press flex-1 bg-surface border border-border text-muted text-xs font-semibold rounded-xl py-2.5 flex items-center justify-center gap-1.5"
+            className="chip-press flex-1 album-control text-xs font-black rounded-xl py-2.5 flex items-center justify-center gap-1.5"
           >
             {copied ? <Check size={14} /> : <ClipboardCopy size={14} />}
-            {copied ? 'Copiado!' : 'Copiar texto'}
+            {copied ? "Copiado!" : "Copiar texto"}
           </button>
         </div>
 
-        <button
-          onClick={handleGenerateMessage}
-          disabled={aiLoading}
-          className="chip-press w-full mb-4 bg-gradient-to-r from-owned/15 to-gold/10 border border-owned/30 text-owned text-xs font-semibold rounded-xl py-2.5 flex items-center justify-center gap-1.5 disabled:opacity-50"
-        >
-          <Bot size={14} />
-          {aiLoading ? 'Gerando mensagem...' : 'Gerar mensagem para grupos (IA)'}
-        </button>
-
-        {aiMsg && (
-          <div className="mb-4 bg-surface border border-border rounded-xl p-4">
-            <div className="flex justify-between items-start mb-2">
-              <p className="text-xs font-semibold text-owned">Mensagem gerada pela IA</p>
-              <button
-                onClick={() => navigator.clipboard.writeText(aiMsg)}
-                className="text-xs text-muted"
-              >
-                copiar
-              </button>
-            </div>
-            <p className="text-sm text-text whitespace-pre-wrap">{aiMsg}</p>
-          </div>
-        )}
-
-        <div className="mb-4 bg-surface border border-border rounded-xl p-4">
+        <div className="mb-4 sticker-slot rounded-xl p-4">
           <div className="flex items-center gap-2 mb-3">
             <Repeat2 size={15} className="text-gold" />
-            <p className="text-xs font-semibold text-muted uppercase tracking-widest">Comparar troca</p>
+            <p className="album-section-label">Comparar troca</p>
           </div>
           <textarea
             value={friendInput}
-            onChange={e => setFriendInput(e.target.value)}
+            onChange={(e) => {
+              setFriendInput(e.target.value);
+              setAiParsedDuplicates(null);
+              setAiParseError("");
+            }}
             placeholder="Cole aqui a lista de repetidas do seu amigo..."
-            className="w-full h-28 bg-bg border border-border rounded-xl px-3 py-2.5 text-base text-text placeholder-muted outline-none focus:border-gold/50 resize-none transition-colors"
+            className="w-full h-28 album-control rounded-xl px-3 py-2.5 text-base text-text placeholder:text-muted outline-none focus:border-gold/60 resize-none transition-colors"
           />
 
           {friendInput.trim() && (
             <div className="mt-3">
+              <button
+                onClick={handleAnalyzeFriendList}
+                disabled={aiParsing}
+                className="chip-press mb-3 w-full border border-gold/30 bg-gold/15 text-gold text-xs font-black rounded-xl py-2.5 flex items-center justify-center gap-1.5 disabled:opacity-50"
+              >
+                <Wand2 size={14} />
+                {aiParsing ? "Analisando lista..." : "Entender lista com IA"}
+              </button>
+
+              <div className="mb-3 rounded-xl border border-white/10 bg-bg/55 px-3 py-2">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-muted">
+                  {aiParsedDuplicates
+                    ? "Resultado da IA"
+                    : "Leitura automática local"}
+                </p>
+                <p className="mt-0.5 text-xs font-semibold text-text/75">
+                  {friendDuplicateCounts.size} tipo(s) de repetida(s)
+                  encontrados
+                </p>
+                {localFriendDuplicateCounts.size > 0 &&
+                  aiParsedDuplicates &&
+                  localFriendDuplicateCounts.size !==
+                    aiParsedDuplicates.size && (
+                    <p className="mt-1 text-[10px] text-muted">
+                      A IA substituiu a leitura local para essa comparação.
+                    </p>
+                  )}
+              </div>
+
+              {aiParseError && (
+                <p className="mb-3 rounded-xl border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-400">
+                  {aiParseError}
+                </p>
+              )}
+
               <div className="grid grid-cols-2 gap-2 mb-3">
-                <MiniStat label="Seu amigo tem e você falta" value={friendCanGive.length} />
-                <MiniStat label="Você tem e ele não listou" value={iCanGive.length} />
+                <MiniStat
+                  label="Seu amigo tem e você falta"
+                  value={friendCanGive.length}
+                />
+                <MiniStat
+                  label="Você tem e ele não listou"
+                  value={iCanGive.length}
+                />
               </div>
 
               {suggestedSwaps.length > 0 ? (
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold text-text">Sugestão automática:</p>
+                  <p className="text-xs font-black text-text">
+                    Sugestão automática:
+                  </p>
                   {suggestedSwaps.map(({ receive, give }) => (
-                    <div key={`${give}-${receive}`} className="flex items-center gap-2 rounded-xl border border-border bg-bg px-3 py-2">
+                    <div
+                      key={`${give}-${receive}`}
+                      className="flex items-center gap-2 rounded-xl border border-white/10 bg-bg/70 px-3 py-2"
+                    >
                       <span className="text-xs text-muted">Você dá</span>
-                      <span className="font-bold text-duplicate text-sm">{give}</span>
+                      <span className="font-bold text-duplicate text-sm">
+                        {give}
+                      </span>
                       <span className="text-xs text-muted">e recebe</span>
-                      <span className="font-bold text-owned text-sm">{receive}</span>
+                      <span className="font-bold text-owned text-sm">
+                        {receive}
+                      </span>
                     </div>
                   ))}
                   <button
-                    onClick={() => navigator.clipboard.writeText(formatSwapSuggestion(suggestedSwaps))}
-                    className="chip-press w-full bg-owned/15 border border-owned/30 text-owned text-xs font-semibold rounded-xl py-2.5"
+                    onClick={() =>
+                      navigator.clipboard.writeText(
+                        formatSwapSuggestion(suggestedSwaps),
+                      )
+                    }
+                    className="chip-press w-full bg-owned/15 border border-owned/30 text-owned text-xs font-black rounded-xl py-2.5"
                   >
                     Copiar sugestão
+                  </button>
+                  <button
+                    onClick={handleAutoExchange}
+                    className="chip-press w-full bg-owned text-white text-xs font-black rounded-xl py-3"
+                  >
+                    Aplicar troca no álbum
                   </button>
                 </div>
               ) : (
@@ -168,28 +279,39 @@ export function Duplicates() {
           )}
         </div>
 
-        <div ref={exportRef} className="bg-bg rounded-2xl p-4">
+        <div ref={exportRef} className="album-strip rounded-xl p-4">
           <div className="flex items-center gap-2 mb-4">
             <Trophy size={22} className="text-gold" />
             <div>
-              <p className="text-sm font-bold text-gold">Figurinhas para trocar</p>
-              <p className="text-xs text-muted">Copa do Mundo 2026 · {totalDups} disponíveis</p>
+              <p className="text-sm font-black text-text">
+                Figurinhas para trocar
+              </p>
+              <p className="text-xs font-semibold text-muted">
+                Copa do Mundo 2026 · {totalDups} disponíveis
+              </p>
             </div>
           </div>
 
           <div className="space-y-3">
             {groups.map(({ country, stickers }) => (
-              <div key={country.code} className="bg-surface rounded-xl p-3">
+              <div
+                key={country.code}
+                className="rounded-xl border border-white/10 bg-white/10 p-3"
+              >
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-lg">{country.flag}</span>
-                  <span className="text-sm font-semibold text-text">{country.name}</span>
-                  <span className="ml-auto text-xs text-muted">{stickers.length} tipos</span>
+                  <span className="text-sm font-black text-text">
+                    {country.name}
+                  </span>
+                  <span className="ml-auto text-xs font-bold text-muted">
+                    {stickers.length} tipos
+                  </span>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {stickers.map(s => (
+                  {stickers.map((s) => (
                     <span
                       key={s.code}
-                      className="text-xs bg-duplicate/15 border border-duplicate/30 text-duplicate px-2 py-0.5 rounded-full font-medium"
+                      className="text-xs bg-duplicate/15 border border-duplicate/30 text-duplicate px-2 py-0.5 rounded-md font-black"
                     >
                       {s.code} x{s.count - 1}
                     </span>
@@ -201,48 +323,81 @@ export function Duplicates() {
         </div>
       </div>
     </div>
-  )
+  );
 
   function hasSticker(code: string): boolean {
-    return statuses[code] === 'owned' || statuses[code] === 'duplicate'
+    return statuses[code] === "owned" || statuses[code] === "duplicate";
   }
 }
 
 function parseDuplicateText(text: string): Map<string, number> {
-  const counts = new Map<string, number>()
-  const matches = text.toUpperCase().match(/\b(?:00|CC\s*[-#]?\s*\d{1,2}|[A-Z]{3}\s*[-#]?\s*\d{1,2})(?:\((\d+)X\)|\s+X(\d+)|X(\d+))?/g) ?? []
+  const counts = new Map<string, number>();
+  const matches =
+    text
+      .toUpperCase()
+      .match(
+        /\b(?:00|CC\s*[-#]?\s*\d{1,2}|[A-Z]{3}\s*[-#]?\s*\d{1,2})(?:\((\d+)X\)|\s+X(\d+)|X(\d+))?/g,
+      ) ?? [];
 
   for (const raw of matches) {
-    const codeMatch = raw.match(/\b(00|CC\s*[-#]?\s*\d{1,2}|[A-Z]{3}\s*[-#]?\s*\d{1,2})\b/)
-    if (!codeMatch) continue
-    const code = normalizeCode(codeMatch[1])
-    const countMatch = raw.match(/\((\d+)X\)|\s+X(\d+)|X(\d+)/)
-    const count = countMatch ? Number(countMatch[1] ?? countMatch[2] ?? countMatch[3]) : 1
-    counts.set(code, (counts.get(code) ?? 0) + count)
+    const codeMatch = raw.match(
+      /\b(00|CC\s*[-#]?\s*\d{1,2}|[A-Z]{3}\s*[-#]?\s*\d{1,2})\b/,
+    );
+    if (!codeMatch) continue;
+    const code = normalizeCode(codeMatch[1]);
+    if (!VALID_STICKER_CODES.has(code)) continue;
+    const countMatch = raw.match(/\((\d+)X\)|\s+X(\d+)|X(\d+)/);
+    const count = countMatch
+      ? Number(countMatch[1] ?? countMatch[2] ?? countMatch[3])
+      : 1;
+    counts.set(code, (counts.get(code) ?? 0) + count);
   }
 
-  return counts
+  return counts;
 }
 
 function normalizeCode(raw: string): string {
-  const code = raw.toUpperCase().replace(/\s+/g, ' ').replace(/[-#]/g, '').trim()
-  if (code === '00') return code
-  const cc = code.match(/^CC\s*(\d{1,2})$/)
-  if (cc) return `CC${Number(cc[1])}`
-  const parts = code.match(/^([A-Z]{3})\s*(\d{1,2})$/)
-  if (parts) return `${parts[1]} ${Number(parts[2])}`
-  return code
+  const code = raw
+    .toUpperCase()
+    .replace(/\s+/g, " ")
+    .replace(/[-#]/g, "")
+    .trim();
+  if (code === "00") return code;
+  const cc = code.match(/^CC\s*(\d{1,2})$/);
+  if (cc) return `CC${Number(cc[1])}`;
+  const parts = code.match(/^([A-Z]{3})\s*(\d{1,2})$/);
+  if (parts) return `${parts[1]} ${Number(parts[2])}`;
+  return code;
 }
 
-function formatSwapSuggestion(swaps: { give: string; receive: string }[]): string {
-  return swaps.map(s => `Eu te dou ${s.give} e você me dá ${s.receive}`).join('\n')
+function countCodes(codes: string[]): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const code of codes) {
+    const normalized = normalizeCode(code);
+    if (!VALID_STICKER_CODES.has(normalized)) continue;
+    counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
+  }
+  return counts;
+}
+
+function formatSwapSuggestion(
+  swaps: { give: string; receive: string }[],
+): string {
+  const total = swaps.length;
+  const header = `Sugestão de troca: ${total} figurinha${total === 1 ? "" : "s"} por ${total} figurinha${total === 1 ? "" : "s"}`;
+  const lines = swaps.map(
+    (s) => `Eu te dou ${s.give} e você me dá ${s.receive}`,
+  );
+  return [header, "", ...lines].join("\n");
 }
 
 function MiniStat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-xl border border-border bg-bg px-3 py-2">
-      <p className="text-lg font-bold text-text">{value}</p>
-      <p className="text-[10px] text-muted leading-tight">{label}</p>
+    <div className="sticker-tile rounded-xl px-3 py-2">
+      <p className="text-lg font-black text-text">{value}</p>
+      <p className="text-[10px] font-bold text-muted leading-tight">
+        {label}
+      </p>
     </div>
-  )
+  );
 }

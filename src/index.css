@@ -9,6 +9,13 @@
     --tabbar-height: calc(
         var(--tabbar-content-height) + var(--tabbar-safe-bottom)
     );
+    --app-bg: #070b0d;
+    --panel: #111719;
+    --panel-soft: #171d20;
+    --panel-line: rgba(255, 244, 215, 0.1);
+    --accent: #ffb238;
+    --accent-soft: rgba(255, 178, 56, 0.16);
+    --cream: #fff4d7;
 }
 
 * {
@@ -31,12 +38,12 @@ html {
 html,
 body {
     /* iOS may paint the home-indicator strip from the document background. */
-    background: #111816;
+    background: var(--app-bg);
     overscroll-behavior: none;
 }
 
 body {
-    color: #f0fdf4;
+    color: var(--cream);
     font-family:
         -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     position: fixed;
@@ -47,34 +54,35 @@ body {
 .app-shell {
     display: flex;
     flex-direction: column;
-    height: 110vh;
+    height: 100dvh;
+    min-height: -webkit-fill-available;
     min-height: 0;
-    background: #111816;
+    background: var(--app-bg);
     padding-top: env(safe-area-inset-top, 0px);
     padding-bottom: var(--tabbar-height);
     overflow: hidden;
 }
 
 .app-content {
-    background: #111816;
-    min-height: 84vh;
+    background: var(--app-bg);
+    min-height: 0;
     overflow: hidden;
 }
 
 .bottom-nav {
-    position: absolute;
+    position: fixed;
     left: 0;
     right: 0;
     bottom: 0;
     z-index: 40;
-    /*height: var(--tabbar-height);*/
-    /*padding-bottom: var(--tabbar-safe-bottom);*/
-    background: #111816;
-    /*background: red;*/
+    height: var(--tabbar-height);
+    padding-bottom: var(--tabbar-safe-bottom);
+    background: var(--app-bg);
 }
 
 .bottom-nav-items {
-    padding-top: 16px;
+    height: var(--tabbar-content-height);
+    padding: 10px 10px 8px;
 }
 
 .toast-safe {
@@ -103,6 +111,64 @@ select {
     overscroll-behavior: contain;
 }
 
+@layer components {
+    .album-page {
+        background:
+            radial-gradient(circle at 18% 0%, rgba(255, 178, 56, 0.08), transparent 34%),
+            linear-gradient(180deg, #070b0d 0%, #0b1113 52%, #070b0d 100%);
+    }
+
+    .album-strip {
+        background: transparent;
+        color: var(--cream);
+        border: 0;
+        box-shadow: none;
+    }
+
+    .album-section-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4rem;
+        border-radius: 0;
+        border: 0;
+        background: transparent;
+        color: var(--accent);
+        padding: 0;
+        font-size: 0.68rem;
+        font-weight: 900;
+        line-height: 1;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+    }
+
+    .album-control {
+        border: 1px solid var(--panel-line);
+        background: rgba(17, 23, 25, 0.86);
+        color: rgba(255, 244, 215, 0.78);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    }
+
+    .album-control-active {
+        border-color: rgba(255, 178, 56, 0.55);
+        background: var(--accent);
+        color: #071011;
+    }
+
+    .sticker-tile {
+        background: linear-gradient(180deg, #171d20, #111719);
+        color: var(--cream);
+        border: 1px solid var(--panel-line);
+        box-shadow:
+            inset 0 1px 0 rgba(255, 255, 255, 0.04),
+            0 12px 28px rgba(0, 0, 0, 0.22);
+    }
+
+    .sticker-slot {
+        background: #111315;
+        border: 1px dashed rgba(255, 178, 56, 0.22);
+    }
+}
+
 /* Custom scrollbar */
 .scroll-area::-webkit-scrollbar {
     width: 4px;
@@ -111,7 +177,7 @@ select {
     background: transparent;
 }
 .scroll-area::-webkit-scrollbar-thumb {
-    background: #1e2b24;
+    background: #20282c;
     border-radius: 2px;
 }
 

@@ -153,6 +153,39 @@ Seja conciso mas entusiasmado.`,
   ])
 }
 
+export async function parseDuplicateListWithAi(
+  apiKey: string,
+  input: string,
+): Promise<string[]> {
+  const reply = await chat(apiKey, [
+    {
+      role: 'system',
+      content: `Você extrai códigos de figurinhas repetidas do álbum da Copa do Mundo 2026 a partir de listas copiadas de WhatsApp, planilhas, notas ou mensagens soltas.
+Aceite formatos variados, com ou sem separadores, como:
+- BRA 1, BRA-1, BRA#1, BRA01, BRA: 1 2 3
+- CC1, CC 1, FWC 7, 00
+- quantidades como BRA 1 x2, BRA 1 (2x), 2x BRA 1
+Retorne uma entrada para cada cópia repetida listada. Se a lista disser BRA 1 x3, retorne "BRA 1" três vezes.
+Normalize para estes formatos: "00", "CC1", "FWC 7", ou "BRA 1".
+Não invente códigos que não estejam explícitos no texto.
+Retorne APENAS um array JSON de strings, sem explicações.`,
+    },
+    {
+      role: 'user',
+      content: input,
+    },
+  ], { maxTokens: 900 })
+
+  const match = reply.match(/\[[\s\S]*\]/)
+  if (!match) return normalizeStickerCodes(reply)
+  try {
+    const codes = JSON.parse(match[0]) as unknown[]
+    return normalizeStickerCodes(codes.filter((c): c is string => typeof c === 'string').join(' '))
+  } catch {
+    return normalizeStickerCodes(reply)
+  }
+}
+
 export async function predictCompletion(
   apiKey: string,
   stats: { owned: number; total: number; duplicates: number; worstCountries: string[] }

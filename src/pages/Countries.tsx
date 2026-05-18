@@ -51,23 +51,41 @@ export function Countries() {
   );
 
   return (
-    <div className="scroll-area flex-1">
-      <div className="sticky top-0 z-10 bg-[#111816] p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold text-text">Países</h1>
-          <div className="flex bg-surface border border-border rounded-xl ">
+    <div className="scroll-area album-page flex-1">
+      <div className="sticky top-0 z-10 bg-bg/95 px-4 pb-4 pt-5 shadow-[0_12px_24px_rgba(0,0,0,0.24)] backdrop-blur space-y-3">
+        <div className="album-strip rounded-xl py-3">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gold">
+            Álbum Copa 2026
+          </p>
+          <div className="mt-1 flex items-end justify-between gap-3">
+            <div>
+              <h1 className="text-2xl font-black leading-none">Países</h1>
+              <p className="mt-1 text-xs font-semibold text-muted">
+                Página por grupos ou confederações
+              </p>
+            </div>
+            <span className="rounded-lg bg-surface px-2.5 py-1 text-xs font-black text-text">
+              {filtered.length}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="flex flex-1 album-control rounded-xl p-1">
             <button
               onClick={() => setView("group")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors ${
-                view === "group" ? "bg-gold text-bg" : "text-muted"
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-black transition-colors ${
+                view === "group" ? "album-control-active" : "text-text/60"
               }`}
             >
               <Layers size={12} /> Grupos
             </button>
             <button
               onClick={() => setView("confederation")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-colors ${
-                view === "confederation" ? "bg-gold text-bg" : "text-muted"
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-black transition-colors ${
+                view === "confederation"
+                  ? "album-control-active"
+                  : "text-text/60"
               }`}
             >
               <Globe size={12} /> Conf.
@@ -85,22 +103,22 @@ export function Countries() {
             placeholder="Buscar país ou código..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-surface border border-border rounded-xl pl-9 pr-4 py-2.5 text-sm text-text placeholder-muted outline-none focus:border-gold/50 transition-colors"
+            className="w-full album-control rounded-xl pl-9 pr-4 py-3 text-sm font-medium text-text placeholder:text-muted outline-none focus:border-gold/60 transition-colors"
           />
         </div>
       </div>
 
-      <div className="px-4 pb-16 space-y-6">
+      <div className="px-4 pb-16 pt-4 space-y-7">
         {view === "group"
           ? GROUPS.map((group) => {
               const countries = filtered.filter((c) => c.group === group);
               if (!countries.length) return null;
               return (
                 <div key={group}>
-                  <h2 className="text-xs font-semibold text-muted uppercase tracking-widest mb-3">
+                  <h2 className="album-section-label mb-3">
                     {group === "Extras" ? "Extras" : `Grupo ${group}`}
                   </h2>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-3 gap-3">
                     {countries.map((country) => (
                       <CountryCard key={country.code} country={country} />
                     ))}
@@ -115,10 +133,10 @@ export function Countries() {
               if (!countries.length) return null;
               return (
                 <div key={conf}>
-                  <h2 className="text-xs font-semibold text-muted uppercase tracking-widest mb-3">
+                  <h2 className="album-section-label mb-3">
                     {CONF_LABELS[conf]}
                   </h2>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-3 gap-3">
                     {countries.map((country) => (
                       <CountryCard key={country.code} country={country} />
                     ))}
