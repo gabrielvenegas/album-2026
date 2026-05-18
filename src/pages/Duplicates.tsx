@@ -69,7 +69,7 @@ export function Duplicates() {
     setTimeout(() => setToast(""), 2500);
   }
 
-  function handleCopyText() {
+  async function handleCopyText() {
     const text = formatDuplicatesAsText(
       groups.map((g) => ({
         country: g.country.name,
@@ -77,10 +77,16 @@ export function Duplicates() {
         stickers: g.stickers,
       })),
     );
-    navigator.clipboard.writeText(text).then(() => {
+
+    try {
+      await copyTextToClipboard(text);
       setCopied(true);
+      showToast("Lista copiada.");
       setTimeout(() => setCopied(false), 2000);
-    });
+    } catch {
+      setCopied(false);
+      showToast("Não foi possível copiar. Tente novamente.");
+    }
   }
 
   async function handleAnalyzeFriendList() {
@@ -385,6 +391,31 @@ function formatSwapSuggestion(
     (s) => `Eu te dou ${s.give} e você me dá ${s.receive}`,
   );
   return [header, "", ...lines].join("\n");
+}
+
+async function copyTextToClipboard(text: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch {
+      // Fall back below for webviews or non-secure contexts.
+    }
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "true");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  textarea.style.top = "0";
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+
+  const copied = document.execCommand("copy");
+  document.body.removeChild(textarea);
+  if (!copied) throw new Error("copy failed");
 }
 
 function MiniStat({ label, value }: { label: string; value: number }) {

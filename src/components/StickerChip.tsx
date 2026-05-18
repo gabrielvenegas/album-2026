@@ -32,10 +32,14 @@ export function StickerChip({ code, label, isFoil }: Props) {
   const chipRef = useRef<HTMLDivElement>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didLongPress = useRef(false);
+  const activePointerIdRef = useRef<number | null>(null);
+  const isScrollingRef = useRef(false);
   const slideSelRef = useRef<SlideOption>("duplicates");
   const pointerXRef = useRef(0);
   const pointerYRef = useRef(0);
   const originRef = useRef({ x: 0, y: 0 });
+  const pointerStartRef = useRef({ x: 0, y: 0 });
+  const scrollAreaRef = useRef<HTMLElement | null>(null);
 
   const [slideActive, setSlideActive] = useState(false);
   const [slideSel, setSlideSel] = useState<SlideOption>("duplicates");
@@ -49,12 +53,22 @@ export function StickerChip({ code, label, isFoil }: Props) {
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (variantMode) return;
       didLongPress.current = false;
+      isScrollingRef.current = false;
+      activePointerIdRef.current = e.pointerId;
       pointerXRef.current = e.clientX;
       pointerYRef.current = e.clientY;
-      e.currentTarget.setPointerCapture(e.pointerId);
+      pointerStartRef.current = { x: e.clientX, y: e.clientY };
+      scrollAreaRef.current = e.currentTarget.closest(".scroll-area");
+      const target = e.currentTarget;
+      const pointerId = e.pointerId;
+      target.setPointerCapture(e.pointerId);
       longPressTimer.current = setTimeout(() => {
+        if (isScrollingRef.current) return;
         didLongPress.current = true;
         originRef.current = { x: pointerXRef.current, y: pointerYRef.current };
+        if (target.isConnected && !target.hasPointerCapture(pointerId)) {
+          target.setPointerCapture(pointerId);
+        }
         const initial: SlideOption =
           pointerXRef.current < window.innerWidth / 2
             ? "duplicates"
@@ -71,7 +85,33 @@ export function StickerChip({ code, label, isFoil }: Props) {
     (e: React.PointerEvent<HTMLDivElement>) => {
       pointerXRef.current = e.clientX;
       pointerYRef.current = e.clientY;
-      if (!didLongPress.current) return;
+      if (isScrollingRef.current) {
+        e.preventDefault();
+        scrollAreaRef.current?.scrollBy({
+          top: pointerStartRef.current.y - e.clientY,
+          behavior: "instant",
+        });
+        pointerStartRef.current = { x: e.clientX, y: e.clientY };
+        return;
+      }
+      if (!didLongPress.current) {
+        const dx = e.clientX - pointerStartRef.current.x;
+        const dy = e.clientY - pointerStartRef.current.y;
+        if (Math.hypot(dx, dy) > 10) {
+          clearTimer();
+          if (Math.abs(dy) > Math.abs(dx)) {
+            isScrollingRef.current = true;
+            e.preventDefault();
+            scrollAreaRef.current?.scrollBy({
+              top: -dy,
+              behavior: "instant",
+            });
+            pointerStartRef.current = { x: e.clientX, y: e.clientY };
+          }
+        }
+        return;
+      }
+      e.preventDefault();
       const dx = e.clientX - originRef.current.x;
       const dy = e.clientY - originRef.current.y;
       const next: SlideOption =
@@ -90,6 +130,14 @@ export function StickerChip({ code, label, isFoil }: Props) {
 
   const handlePointerUp = useCallback(() => {
     clearTimer();
+    activePointerIdRef.current = null;
+    scrollAreaRef.current = null;
+    if (isScrollingRef.current) {
+      isScrollingRef.current = false;
+      didLongPress.current = false;
+      setSlideActive(false);
+      return;
+    }
     if (!didLongPress.current) {
       if (confirmBeforeSelect) {
         const nextLabel =
@@ -135,6 +183,9 @@ export function StickerChip({ code, label, isFoil }: Props) {
   const handlePointerCancel = useCallback(() => {
     clearTimer();
     didLongPress.current = false;
+    isScrollingRef.current = false;
+    activePointerIdRef.current = null;
+    scrollAreaRef.current = null;
     setSlideActive(false);
   }, [clearTimer]);
 
