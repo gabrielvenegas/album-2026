@@ -4,10 +4,18 @@ import { persist } from 'zustand/middleware'
 export type StickerStatus = 'missing' | 'owned' | 'duplicate'
 export type StickerVariant = 'purple' | 'bronze' | 'silver' | 'gold'
 
+export interface SpendingEntry {
+  id: string
+  date: string
+  description: string
+  amount: number
+}
+
 interface CollectionState {
   statuses: Record<string, StickerStatus>
   dupCounts: Record<string, number>
   variantStatuses: Record<string, Partial<Record<StickerVariant, boolean>>>
+  spendingEntries: SpendingEntry[]
   apiKey: string
   confirmBeforeSelect: boolean
 
@@ -18,6 +26,9 @@ interface CollectionState {
   setDuplicateCopies: (code: string, copies: number) => void
   toggleVariant: (code: string, variant: StickerVariant) => void
   markMultiple: (codes: string[], status: StickerStatus) => void
+  addSpendingEntry: (entry: Omit<SpendingEntry, 'id'>) => void
+  deleteSpendingEntry: (id: string) => void
+  clearSpendingEntries: () => void
   setApiKey: (key: string) => void
   setConfirmBeforeSelect: (value: boolean) => void
   resetCountry: (countryCode: string, stickerCodes: string[]) => void
@@ -32,6 +43,7 @@ export const useCollection = create<CollectionState>()(
       statuses: {},
       dupCounts: {},
       variantStatuses: {},
+      spendingEntries: [],
       apiKey: '',
       confirmBeforeSelect: false,
 
@@ -118,6 +130,32 @@ export const useCollection = create<CollectionState>()(
         })
       },
 
+      addSpendingEntry(entry) {
+        const amount = Math.max(0, Number(entry.amount))
+        if (!Number.isFinite(amount) || !amount) return
+        set(s => ({
+          spendingEntries: [
+            {
+              ...entry,
+              id: createSpendingId(),
+              description: entry.description.trim() || 'Gasto com o álbum',
+              amount,
+            },
+            ...s.spendingEntries,
+          ],
+        }))
+      },
+
+      deleteSpendingEntry(id) {
+        set(s => ({
+          spendingEntries: s.spendingEntries.filter(entry => entry.id !== id),
+        }))
+      },
+
+      clearSpendingEntries() {
+        set({ spendingEntries: [] })
+      },
+
       setApiKey(key) {
         set({ apiKey: key })
       },
@@ -145,8 +183,8 @@ export const useCollection = create<CollectionState>()(
       },
 
       exportData() {
-        const { statuses, dupCounts, variantStatuses } = get()
-        return JSON.stringify({ statuses, dupCounts, variantStatuses }, null, 2)
+        const { statuses, dupCounts, variantStatuses, spendingEntries } = get()
+        return JSON.stringify({ statuses, dupCounts, variantStatuses, spendingEntries }, null, 2)
       },
 
       importData(json) {
@@ -155,11 +193,16 @@ export const useCollection = create<CollectionState>()(
             statuses: Record<string, StickerStatus>
             dupCounts: Record<string, number>
             variantStatuses?: Record<string, Partial<Record<StickerVariant, boolean>>>
+            spendingEntries?: SpendingEntry[]
           }
+          const spendingEntries = Array.isArray(data.spendingEntries)
+            ? data.spendingEntries.filter(isSpendingEntry)
+            : []
           set({
             statuses: data.statuses ?? {},
             dupCounts: data.dupCounts ?? {},
             variantStatuses: data.variantStatuses ?? {},
+            spendingEntries,
           })
         } catch {
           // ignore malformed
@@ -189,4 +232,20 @@ export function useCountryStats(codes: string[]) {
     else if (st === 'duplicate') { owned++; duplicates++ }
   }
   return { owned, duplicates, missing: codes.length - owned }
+}
+
+function createSpendingId() {
+  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
+
+function isSpendingEntry(entry: unknown): entry is SpendingEntry {
+  if (!entry || typeof entry !== 'object') return false
+  const candidate = entry as SpendingEntry
+  return (
+    typeof candidate.id === 'string' &&
+    typeof candidate.date === 'string' &&
+    typeof candidate.description === 'string' &&
+    typeof candidate.amount === 'number' &&
+    Number.isFinite(candidate.amount)
+  )
 }

@@ -52,7 +52,7 @@ export function Countries() {
 
   return (
     <div className="scroll-area flex-1">
-      <div className="sticky top-0 z-10 bg-[#111816] px-4 pt-6 pb-3 space-y-3">
+      <div className="sticky top-0 z-10 bg-[#111816] p-4 space-y-3">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold text-text">Países</h1>
           <div className="flex bg-surface border border-border rounded-xl ">
@@ -90,7 +90,7 @@ export function Countries() {
         </div>
       </div>
 
-      <div className="px-4 pb-6 space-y-6">
+      <div className="px-4 pb-16 space-y-6">
         {view === "group"
           ? GROUPS.map((group) => {
               const countries = filtered.filter((c) => c.group === group);
