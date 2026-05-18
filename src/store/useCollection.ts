@@ -9,6 +9,7 @@ interface CollectionState {
   dupCounts: Record<string, number>
   variantStatuses: Record<string, Partial<Record<StickerVariant, boolean>>>
   apiKey: string
+  confirmBeforeSelect: boolean
 
   setStatus: (code: string, status: StickerStatus) => void
   cycleStatus: (code: string) => void
@@ -18,6 +19,7 @@ interface CollectionState {
   toggleVariant: (code: string, variant: StickerVariant) => void
   markMultiple: (codes: string[], status: StickerStatus) => void
   setApiKey: (key: string) => void
+  setConfirmBeforeSelect: (value: boolean) => void
   resetCountry: (countryCode: string, stickerCodes: string[]) => void
   resetAll: () => void
   exportData: () => string
@@ -31,6 +33,7 @@ export const useCollection = create<CollectionState>()(
       dupCounts: {},
       variantStatuses: {},
       apiKey: '',
+      confirmBeforeSelect: false,
 
       setStatus(code, status) {
         set(s => {
@@ -119,6 +122,10 @@ export const useCollection = create<CollectionState>()(
         set({ apiKey: key })
       },
 
+      setConfirmBeforeSelect(value) {
+        set({ confirmBeforeSelect: value })
+      },
+
       resetCountry(_, stickerCodes) {
         set(s => {
           const statuses = { ...s.statuses }
@@ -167,8 +174,10 @@ export function useStickerStatus(code: string): StickerStatus {
   return useCollection(s => s.statuses[code] ?? 'missing')
 }
 
+const EMPTY_VARIANTS: Partial<Record<StickerVariant, boolean>> = {}
+
 export function useStickerVariants(code: string): Partial<Record<StickerVariant, boolean>> {
-  return useCollection(s => s.variantStatuses[code] ?? {})
+  return useCollection(s => s.variantStatuses[code] ?? EMPTY_VARIANTS)
 }
 
 export function useCountryStats(codes: string[]) {

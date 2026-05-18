@@ -3,7 +3,7 @@ import { ArrowLeft, Check, ChevronLeft, ChevronRight, Square, RotateCcw } from "
 import { COUNTRIES, getCountryByCode, getStickerCode } from "@/data/album";
 import { useCollection, useCountryStats } from "@/store/useCollection";
 import { StickerChip } from "@/components/StickerChip";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 export function CountryDetail() {
   const { code } = useParams<{ code: string }>();
@@ -13,6 +13,12 @@ export function CountryDetail() {
 
   const { markMultiple, resetCountry } = useCollection();
 
+  const codes = useMemo(
+    () => country ? country.stickers.map((s) => getStickerCode(country.code, s)) : [],
+    [country]
+  );
+  const { owned, duplicates, missing } = useCountryStats(codes);
+
   if (!country) {
     return (
       <div className="flex-1 flex items-center justify-center text-muted">
@@ -20,9 +26,6 @@ export function CountryDetail() {
       </div>
     );
   }
-
-  const codes = country.stickers.map((s) => getStickerCode(country.code, s));
-  const { owned, duplicates, missing } = useCountryStats(codes);
   const total = country.stickers.length;
   const pct = Math.round((owned / total) * 100);
   const countryIndex = COUNTRIES.findIndex((c) => c.code === country.code);

@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react'
-import { Key, Upload, Download, AlertTriangle, CheckCircle, XCircle } from 'lucide-react'
+import { Key, Upload, Download, AlertTriangle, CheckCircle, XCircle, SlidersHorizontal } from 'lucide-react'
 import { useCollection } from '@/store/useCollection'
 import { testConnection } from '@/lib/ai'
 
 export function Settings() {
-  const { apiKey, setApiKey, resetAll, exportData, importData } = useCollection()
+  const { apiKey, setApiKey, resetAll, exportData, importData, confirmBeforeSelect, setConfirmBeforeSelect } = useCollection()
   const [keyInput, setKeyInput] = useState(apiKey)
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<'ok' | 'fail' | null>(null)
@@ -115,6 +115,29 @@ export function Settings() {
             {testError}
           </p>
         )}
+      </Section>
+
+      <Section title="Comportamento" Icon={SlidersHorizontal}>
+        <label className="flex items-center justify-between gap-3 cursor-pointer select-none">
+          <div>
+            <p className="text-sm font-medium text-text">Confirmar antes de selecionar</p>
+            <p className="text-xs text-muted mt-0.5">Pede confirmação ao tocar em uma figurinha</p>
+          </div>
+          <button
+            role="switch"
+            aria-checked={confirmBeforeSelect}
+            onClick={() => setConfirmBeforeSelect(!confirmBeforeSelect)}
+            className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
+              confirmBeforeSelect ? 'bg-owned' : 'bg-border'
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform transition-transform duration-200 ${
+                confirmBeforeSelect ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </label>
       </Section>
 
       <Section title="Dados da coleção" Icon={Download}>
