@@ -13,7 +13,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icon.svg', 'icons/*.png'],
+      includeAssets: ['icon.svg', 'logo.jpeg', 'icons/*.png'],
       manifest: {
         name: 'Álbum Copa do Mundo 2026',
         short_name: 'Álbum 2026',
@@ -30,7 +30,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,jpeg,jpg,woff2}'],
         navigateFallback: '/index.html',
       },
     }),

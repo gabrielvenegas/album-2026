@@ -162,11 +162,10 @@ export function StickerChip({ code, label, isFoil }: Props) {
 
         {variantMode && (
           <div
-            className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-surface/95 rounded-xl z-20"
+            className="absolute inset-0 flex items-center justify-center bg-surface/95 rounded-xl z-20"
             onPointerUp={closeVariantMode}
           >
-            <span className="text-[7px] text-muted uppercase tracking-widest">Colecionável</span>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-2.5">
               {VARIANTS.map(v => (
                 <button
                   key={v.id}
@@ -178,8 +177,8 @@ export function StickerChip({ code, label, isFoil }: Props) {
                     e.stopPropagation()
                     toggleVariant(code, v.id)
                   }}
-                  className={`h-5 w-5 rounded-full border-2 transition-all active:scale-125 ${
-                    variants[v.id] ? `${v.on} scale-110` : 'bg-transparent border-muted/40'
+                  className={`h-7 w-7 rounded-full border-2 transition-all active:scale-125 ${
+                    variants[v.id] ? `${v.on} scale-110` : v.off
                   }`}
                 />
               ))}
@@ -265,9 +264,9 @@ export function StickerChip({ code, label, isFoil }: Props) {
   )
 }
 
-const VARIANTS: { id: StickerVariant; label: string; on: string }[] = [
-  { id: 'purple', label: 'Roxa', on: 'bg-purple-500 border-purple-300' },
-  { id: 'bronze', label: 'Bronze', on: 'bg-orange-700 border-orange-400' },
-  { id: 'silver', label: 'Prata', on: 'bg-slate-300 border-white' },
-  { id: 'gold', label: 'Ouro', on: 'bg-gold border-yellow-200' },
+const VARIANTS: { id: StickerVariant; label: string; on: string; off: string }[] = [
+  { id: 'purple', label: 'Roxa',   on: 'bg-purple-500 border-purple-300', off: 'bg-transparent border-purple-500' },
+  { id: 'bronze', label: 'Bronze', on: 'bg-orange-700 border-orange-500', off: 'bg-transparent border-orange-700' },
+  { id: 'silver', label: 'Prata',  on: 'bg-slate-300  border-white',      off: 'bg-transparent border-slate-400'  },
+  { id: 'gold',   label: 'Ouro',   on: 'bg-gold border-yellow-200',       off: 'bg-transparent border-gold'        },
 ]
