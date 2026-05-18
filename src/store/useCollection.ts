@@ -2,10 +2,12 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
 export type StickerStatus = 'missing' | 'owned' | 'duplicate'
+export type StickerVariant = 'purple' | 'bronze' | 'silver' | 'gold'
 
 interface CollectionState {
   statuses: Record<string, StickerStatus>
   dupCounts: Record<string, number>
+  variantStatuses: Record<string, Partial<Record<StickerVariant, boolean>>>
   apiKey: string
 
   setStatus: (code: string, status: StickerStatus) => void
@@ -13,6 +15,7 @@ interface CollectionState {
   incrementDup: (code: string) => void
   decrementDup: (code: string) => void
   setDuplicateCopies: (code: string, copies: number) => void
+  toggleVariant: (code: string, variant: StickerVariant) => void
   markMultiple: (codes: string[], status: StickerStatus) => void
   setApiKey: (key: string) => void
   resetCountry: (countryCode: string, stickerCodes: string[]) => void
@@ -26,6 +29,7 @@ export const useCollection = create<CollectionState>()(
     (set, get) => ({
       statuses: {},
       dupCounts: {},
+      variantStatuses: {},
       apiKey: '',
 
       setStatus(code, status) {
@@ -61,6 +65,18 @@ export const useCollection = create<CollectionState>()(
           statuses: { ...s.statuses, [code]: 'duplicate' },
           dupCounts: { ...s.dupCounts, [code]: normalized + 1 },
         }))
+      },
+
+      toggleVariant(code, variant) {
+        set(s => {
+          const current = s.variantStatuses[code] ?? {}
+          const next = { ...current, [variant]: !current[variant] }
+          if (!next[variant]) delete next[variant]
+          const variantStatuses = { ...s.variantStatuses }
+          if (Object.keys(next).length) variantStatuses[code] = next
+          else delete variantStatuses[code]
+          return { variantStatuses }
+        })
       },
 
       decrementDup(code) {
@@ -107,27 +123,37 @@ export const useCollection = create<CollectionState>()(
         set(s => {
           const statuses = { ...s.statuses }
           const dupCounts = { ...s.dupCounts }
+          const variantStatuses = { ...s.variantStatuses }
           for (const code of stickerCodes) {
             delete statuses[code]
             delete dupCounts[code]
+            delete variantStatuses[code]
           }
-          return { statuses, dupCounts }
+          return { statuses, dupCounts, variantStatuses }
         })
       },
 
       resetAll() {
-        set({ statuses: {}, dupCounts: {} })
+        set({ statuses: {}, dupCounts: {}, variantStatuses: {} })
       },
 
       exportData() {
-        const { statuses, dupCounts } = get()
-        return JSON.stringify({ statuses, dupCounts }, null, 2)
+        const { statuses, dupCounts, variantStatuses } = get()
+        return JSON.stringify({ statuses, dupCounts, variantStatuses }, null, 2)
       },
 
       importData(json) {
         try {
-          const data = JSON.parse(json) as { statuses: Record<string, StickerStatus>; dupCounts: Record<string, number> }
-          set({ statuses: data.statuses ?? {}, dupCounts: data.dupCounts ?? {} })
+          const data = JSON.parse(json) as {
+            statuses: Record<string, StickerStatus>
+            dupCounts: Record<string, number>
+            variantStatuses?: Record<string, Partial<Record<StickerVariant, boolean>>>
+          }
+          set({
+            statuses: data.statuses ?? {},
+            dupCounts: data.dupCounts ?? {},
+            variantStatuses: data.variantStatuses ?? {},
+          })
         } catch {
           // ignore malformed
         }
@@ -139,6 +165,10 @@ export const useCollection = create<CollectionState>()(
 
 export function useStickerStatus(code: string): StickerStatus {
   return useCollection(s => s.statuses[code] ?? 'missing')
+}
+
+export function useStickerVariants(code: string): Partial<Record<StickerVariant, boolean>> {
+  return useCollection(s => s.variantStatuses[code] ?? {})
 }
 
 export function useCountryStats(codes: string[]) {
