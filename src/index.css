@@ -73,7 +73,7 @@ body {
     position: fixed;
     left: 0;
     right: 0;
-    bottom: -40px;
+    bottom: -55px;
     z-index: 40;
     height: var(--tabbar-height);
     padding-bottom: var(--tabbar-safe-bottom);
