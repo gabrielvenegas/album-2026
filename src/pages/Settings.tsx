@@ -129,14 +129,10 @@ export function Settings() {
         </div>
       )}
 
-      <div className="album-strip mb-6 rounded-xl px-4 py-4">
-        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gold">
-          Preferências
-        </p>
-        <h1 className="mt-1 text-2xl font-black leading-none text-text">
-          Configurações
-        </h1>
-        <p className="mt-2 text-xs font-semibold text-muted">
+      <div className="app-header mb-5 px-0 py-0">
+        <p className="app-header-kicker">Preferências</p>
+        <h1 className="app-header-title">Configurações</h1>
+        <p className="app-header-subtitle">
           Dados, IA e comportamento do álbum
         </p>
       </div>
@@ -161,7 +157,7 @@ export function Settings() {
           <div className="flex items-end justify-between gap-3 mb-4">
             <div>
               <p className="text-xs font-bold uppercase tracking-wide text-muted">Total gasto</p>
-              <p className="text-2xl font-black text-gold">
+            <p className="text-xl font-black text-gold">
                 {formatCurrency(totalSpent)}
               </p>
             </div>
@@ -466,7 +462,7 @@ function TabButton({
   return (
     <button
       onClick={onClick}
-      className={`chip-press flex items-center justify-center gap-2 px-3 py-3 text-sm font-black transition-colors ${
+      className={`chip-press flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-black transition-colors ${
         active ? "bg-gold text-bg" : "bg-surface text-muted"
       }`}
     >

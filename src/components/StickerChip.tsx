@@ -281,12 +281,12 @@ export function StickerChip({ code, label, isFoil }: Props) {
                     slideSel === "duplicates" ? "bg-duplicate" : "bg-white/10"
                   }`}
                 >
-                  <span className="text-4xl font-bold text-white leading-none">
+                  <span className="text-3xl font-bold text-white leading-none">
                     +
                   </span>
                 </div>
                 <div className="text-center px-6">
-                  <p className="text-2xl font-bold text-white">Repetidas</p>
+                  <p className="text-xl font-bold text-white">Repetidas</p>
                   <p className="text-sm text-white/50 mt-1">Qtd de cópias</p>
                 </div>
               </div>
@@ -309,7 +309,7 @@ export function StickerChip({ code, label, isFoil }: Props) {
                   <Sparkles size={36} className="text-white" />
                 </div>
                 <div className="text-center px-6">
-                  <p className="text-2xl font-bold text-white">Colecionável</p>
+                  <p className="text-xl font-bold text-white">Colecionável</p>
                   <p className="text-sm text-white/50 mt-1">Tipo especial</p>
                 </div>
               </div>
@@ -339,7 +339,7 @@ export function StickerChip({ code, label, isFoil }: Props) {
                   <X size={36} className="text-white" />
                 </div>
                 <div className="text-center px-6">
-                  <p className="text-2xl font-bold text-white">Cancelar</p>
+                  <p className="text-xl font-bold text-white">Cancelar</p>
                   <p className="text-sm text-white/50 mt-1">
                     Nenhuma alteração
                   </p>

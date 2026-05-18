@@ -138,16 +138,12 @@ export function Duplicates() {
       )}
 
       <div className="flex-none px-4 pt-5 pb-3">
-        <div className="album-strip rounded-xl px-4 py-4">
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gold">
-            Área de trocas
-          </p>
+        <div className="app-header px-0 py-0">
+          <p className="app-header-kicker">Área de trocas</p>
           <div className="mt-1 flex items-end justify-between gap-3">
             <div>
-              <h1 className="text-2xl font-black leading-none text-text">
-                Repetidas
-              </h1>
-              <p className="mt-2 text-xs font-semibold text-muted">
+              <h1 className="app-header-title">Repetidas</h1>
+              <p className="app-header-subtitle">
                 Figurinhas prontas para negociar
               </p>
             </div>
@@ -394,7 +390,7 @@ function formatSwapSuggestion(
 function MiniStat({ label, value }: { label: string; value: number }) {
   return (
     <div className="sticker-tile rounded-xl px-3 py-2">
-      <p className="text-lg font-black text-text">{value}</p>
+      <p className="text-base font-black text-text">{value}</p>
       <p className="text-[10px] font-bold text-muted leading-tight">
         {label}
       </p>

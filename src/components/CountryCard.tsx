@@ -35,7 +35,7 @@ export function CountryCard({ country }: Props) {
           color={isComplete ? '#00d675' : '#ffb238'}
           trackColor="rgba(23,33,29,0.14)"
         />
-        <span className="absolute inset-0 flex items-center justify-center text-2xl" style={{ marginTop: 2 }}>
+        <span className="absolute inset-0 flex items-center justify-center text-xl" style={{ marginTop: 2 }}>
           {country.flag}
         </span>
       </div>

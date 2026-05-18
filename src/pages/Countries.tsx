@@ -53,14 +53,12 @@ export function Countries() {
   return (
     <div className="scroll-area album-page flex-1">
       <div className="sticky top-0 z-10 bg-bg/95 px-4 pb-4 pt-5 shadow-[0_12px_24px_rgba(0,0,0,0.24)] backdrop-blur space-y-3">
-        <div className="album-strip rounded-xl py-3">
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gold">
-            Álbum Copa 2026
-          </p>
-          <div className="mt-1 flex items-end justify-between gap-3">
+        <div className="app-header px-0 py-0">
+          <p className="app-header-kicker">Álbum Copa 2026</p>
+          <div className="flex items-end justify-between gap-3">
             <div>
-              <h1 className="text-2xl font-black leading-none">Países</h1>
-              <p className="mt-1 text-xs font-semibold text-muted">
+              <h1 className="app-header-title">Países</h1>
+              <p className="app-header-subtitle">
                 Página por grupos ou confederações
               </p>
             </div>

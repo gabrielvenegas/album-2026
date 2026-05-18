@@ -142,7 +142,7 @@ export function Scanner() {
   }
 
   return (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div className="album-page flex flex-col flex-1 min-h-0">
       {toast && (
         <div className="toast-safe fixed left-4 right-4 z-50 bg-owned text-white text-sm font-semibold rounded-xl px-4 py-3 text-center shadow-lg">
           {toast}
@@ -150,16 +150,17 @@ export function Scanner() {
       )}
 
       <div className="flex-none px-4 pt-5 pb-3">
-        <h1 className="text-xl font-bold text-text">Scanner</h1>
+        <div className="app-header px-0 py-0">
+          <p className="app-header-kicker">Scanner</p>
+          <h1 className="app-header-title">Escanear</h1>
+          <p className="app-header-subtitle">
+            Aponte a câmera para suas figurinhas
+          </p>
+        </div>
       </div>
 
       <div className="scroll-area flex-1 px-4 pb-4">
         <div className="space-y-4">
-          <p className="text-sm text-muted">
-            Aponte a câmera para as figurinhas e capture a imagem para a IA ler
-            os códigos.
-          </p>
-
           <div className="relative overflow-hidden rounded-2xl border border-border bg-black aspect-[3/4]">
             <video
               ref={videoRef}

@@ -54,12 +54,12 @@ body {
 .app-shell {
     display: flex;
     flex-direction: column;
-    height: 100dvh;
+    height: 110dvh;
     min-height: -webkit-fill-available;
     min-height: 0;
     background: var(--app-bg);
     padding-top: env(safe-area-inset-top, 0px);
-    padding-bottom: var(--tabbar-height);
+    padding-bottom: 150px;
     overflow: hidden;
 }
 
@@ -73,7 +73,7 @@ body {
     position: fixed;
     left: 0;
     right: 0;
-    bottom: 0;
+    bottom: -40px;
     z-index: 40;
     height: var(--tabbar-height);
     padding-bottom: var(--tabbar-safe-bottom);
@@ -114,7 +114,11 @@ select {
 @layer components {
     .album-page {
         background:
-            radial-gradient(circle at 18% 0%, rgba(255, 178, 56, 0.08), transparent 34%),
+            radial-gradient(
+                circle at 18% 0%,
+                rgba(255, 178, 56, 0.08),
+                transparent 34%
+            ),
             linear-gradient(180deg, #070b0d 0%, #0b1113 52%, #070b0d 100%);
     }
 
@@ -123,6 +127,34 @@ select {
         color: var(--cream);
         border: 0;
         box-shadow: none;
+    }
+
+    .app-header {
+        padding: 1.25rem 1rem 1rem;
+    }
+
+    .app-header-kicker {
+        color: var(--accent);
+        font-size: 0.64rem;
+        font-weight: 900;
+        letter-spacing: 0.24em;
+        line-height: 1;
+        text-transform: uppercase;
+    }
+
+    .app-header-title {
+        color: var(--cream);
+        font-size: 1.65rem;
+        font-weight: 900;
+        line-height: 1;
+        margin-top: 0.5rem;
+    }
+
+    .app-header-subtitle {
+        color: #7b828a;
+        font-size: 0.72rem;
+        font-weight: 700;
+        margin-top: 0.45rem;
     }
 
     .album-section-label {

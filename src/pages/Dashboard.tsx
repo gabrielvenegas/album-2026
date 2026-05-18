@@ -44,14 +44,14 @@ export function Dashboard() {
     .slice(0, 5);
 
   return (
-    <div className="scroll-area album-page flex-1 px-4 py-6">
-      <div className="album-strip mb-7 px-0 py-2">
-        <p className="album-section-label">Copa do Mundo · 2026</p>
-        <h1 className="mt-8 text-4xl font-black leading-[0.9] text-text">
+    <div className="scroll-area album-page flex-1 px-4 pb-6">
+      <div className="app-header mb-5 px-0">
+        <p className="app-header-kicker">Copa do Mundo · 2026</p>
+        <h1 className="mt-7 text-3xl font-black leading-[0.95] text-text">
           Meu Álbum<br />
           <span className="text-gold">2026</span>
         </h1>
-        <p className="mt-4 text-sm font-semibold text-muted">
+        <p className="app-header-subtitle">
           {owned} de {TOTAL_STICKERS} figurinhas coladas
         </p>
       </div>
@@ -66,14 +66,14 @@ export function Dashboard() {
             trackColor="rgba(255,244,215,0.08)"
           />
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-xl font-black text-gold">{pct}%</span>
+            <span className="text-lg font-black text-gold">{pct}%</span>
           </div>
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-black uppercase tracking-[0.22em] text-muted">
             Faltam
           </p>
-          <p className="mt-1 text-4xl font-black leading-none text-text">
+          <p className="mt-1 text-3xl font-black leading-none text-text">
             {missing}
           </p>
           <p className="mt-2 text-xs font-semibold text-muted">
@@ -96,7 +96,7 @@ export function Dashboard() {
           <ScanLine size={22} strokeWidth={2.6} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-base font-black leading-tight">
+          <span className="block text-sm font-black leading-tight">
             Escanear pacotinho
           </span>
           <span className="block text-xs font-semibold opacity-75">
@@ -193,7 +193,7 @@ function ActionButton({
   return (
     <button
       onClick={onClick}
-      className={`chip-press flex min-h-[72px] flex-col items-center justify-center gap-1 rounded-xl text-xs font-black ${
+      className={`chip-press flex min-h-[64px] flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-black ${
         tone === "primary"
           ? "bg-gold text-bg"
           : "bg-surface text-text"
@@ -223,9 +223,9 @@ function CountryRow({
       onClick={onClick}
       className="chip-press sticker-tile w-full flex items-center gap-3 rounded-xl px-3 py-2.5"
     >
-      <span className="text-2xl">{flag}</span>
+      <span className="text-xl">{flag}</span>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-black text-text">{name}</p>
+        <p className="text-[13px] font-black text-text">{name}</p>
         <div className="flex items-center gap-2 mt-0.5">
           <div className="flex-1 h-1 bg-white/10 rounded-full">
             <div
@@ -256,7 +256,7 @@ function InlineStat({
 }) {
   return (
     <div className="border-r border-border px-3 last:border-r-0">
-      <p className={`text-2xl font-black ${color}`}>{value}</p>
+      <p className={`text-xl font-black ${color}`}>{value}</p>
       <p className="mt-1 text-[10px] font-black uppercase tracking-[0.22em] text-muted">
         {label}
       </p>

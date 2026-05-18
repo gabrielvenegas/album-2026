@@ -37,8 +37,8 @@ export function CountryDetail() {
 
   return (
     <div className="album-page flex flex-1 flex-col min-h-0">
-      <div className="flex-none px-4 pt-4 pb-3 bg-bg/95 border-b border-[#25372f] shadow-[0_12px_24px_rgba(0,0,0,0.2)]">
-        <div className="album-strip rounded-xl px-3 py-3">
+      <div className="flex-none px-4 pt-4 pb-3 bg-bg/95 border-b border-border shadow-[0_12px_24px_rgba(0,0,0,0.2)]">
+        <div className="app-header px-0 py-0">
           <div className="flex items-center gap-3">
           <button
             onClick={() => navigate("/paises")}
@@ -46,14 +46,14 @@ export function CountryDetail() {
           >
             <ArrowLeft size={20} />
           </button>
-            <span className="flex h-14 w-14 items-center justify-center rounded-lg border border-white/10 bg-white/10 text-3xl shadow-inner">
+            <span className="flex h-12 w-12 items-center justify-center rounded-lg border border-white/10 bg-white/10 text-2xl shadow-inner">
               {country.flag}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-gold">
+              <p className="app-header-kicker">
                 {country.code} · {country.group === "Extras" ? "Extras" : `Grupo ${country.group}`}
               </p>
-              <h1 className="truncate text-xl font-black leading-tight text-text">
+              <h1 className="truncate text-lg font-black leading-tight text-text">
                 {country.name}
               </h1>
             </div>
@@ -184,7 +184,7 @@ function MiniStat({
 
   return (
     <div className="rounded-lg border border-white/10 bg-white/10 px-2 py-1.5">
-      <p className={`text-sm font-black leading-none ${toneClass}`}>{value}</p>
+      <p className={`text-xs font-black leading-none ${toneClass}`}>{value}</p>
       <p className="mt-1 text-[9px] font-bold uppercase tracking-wide text-muted">
         {label}
       </p>
