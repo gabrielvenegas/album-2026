@@ -12,11 +12,12 @@ interface Props {
   code: string;
   label: string;
   isFoil?: boolean;
+  image?: string;
 }
 
 type SlideOption = "duplicates" | "variants" | "cancel";
 
-export function StickerChip({ code, label, isFoil }: Props) {
+export function StickerChip({ code, label, isFoil, image }: Props) {
   const status = useStickerStatus(code);
   const variants = useStickerVariants(code);
   const {
@@ -44,7 +45,6 @@ export function StickerChip({ code, label, isFoil }: Props) {
   const [slideActive, setSlideActive] = useState(false);
   const [slideSel, setSlideSel] = useState<SlideOption>("duplicates");
   const [variantMode, setVariantMode] = useState(false);
-
   const clearTimer = useCallback(() => {
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
   }, []);
@@ -206,6 +206,13 @@ export function StickerChip({ code, label, isFoil }: Props) {
         : "sticker-slot text-muted";
 
   const foilRing = isFoil && status !== "missing" ? "ring-1 ring-gold/40" : "";
+  const showImage = Boolean(image);
+  const imageMuted = status === "missing";
+  const hasArt = Boolean(image);
+  const isLandscape = label === "Foto oficial";
+  const sizeClass = hasArt
+    ? "aspect-[5/7] w-full min-h-0 p-0"
+    : "min-h-[82px] p-2 pb-5 gap-1";
 
   return (
     <>
@@ -218,23 +225,56 @@ export function StickerChip({ code, label, isFoil }: Props) {
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerLeave}
         onPointerCancel={handlePointerCancel}
-        className={`chip-press relative flex min-h-[82px] flex-col items-center justify-center rounded-xl border p-2 pb-5 gap-1 select-none touch-none overflow-hidden ${bg} ${foilRing}`}
+        className={`chip-press relative flex flex-col items-stretch justify-end rounded-xl border select-none touch-none overflow-hidden ${sizeClass} ${bg} ${foilRing}`}
       >
-        {status !== "missing" && (
-          <span className="absolute left-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-current opacity-70" />
+        {showImage && image && (
+          <div className="absolute inset-0 flex items-center justify-center bg-zinc-950">
+            <img
+              src={image}
+              alt=""
+              className={`h-full w-full object-contain ${
+                isLandscape ? "scale-[1.42] rotate-90" : ""
+              } ${imageMuted ? "opacity-60 saturate-50" : ""}`}
+              loading="lazy"
+              draggable={false}
+            />
+            <span className="pointer-events-none absolute inset-x-0 bottom-0 h-[40%] bg-gradient-to-t from-black/92 via-black/55 to-transparent" />
+            {imageMuted && (
+              <span className="pointer-events-none absolute inset-0 bg-black/50" />
+            )}
+          </div>
         )}
-        <span
-          className={`text-xs font-black leading-none ${status === "missing" ? "text-muted" : ""}`}
-        >
-          {code}
-        </span>
-        <span
-          className={`line-clamp-1 px-0.5 text-center text-[9px] font-semibold leading-none ${
-            status === "missing" ? "text-muted/55" : "text-muted"
-          }`}
-        >
-          {label}
-        </span>
+
+        {showImage ? (
+          <div className="relative z-[1] w-full px-1.5 pb-1.5 pt-8">
+            <p className="text-[10px] font-black leading-none text-white drop-shadow-md">
+              {code}
+            </p>
+            <p className="mt-0.5 line-clamp-2 text-center text-[8px] font-semibold leading-tight text-white/90 drop-shadow-md">
+              {label}
+            </p>
+          </div>
+        ) : (
+          <>
+            {status !== "missing" && (
+              <span className="absolute left-1.5 top-1.5 z-[2] h-1.5 w-1.5 rounded-full bg-current opacity-70" />
+            )}
+            <span
+              className={`relative z-[1] text-xs font-black leading-none ${
+                status === "missing" ? "text-muted" : ""
+              }`}
+            >
+              {code}
+            </span>
+            <span
+              className={`relative z-[1] line-clamp-2 px-0.5 text-center text-[9px] font-semibold leading-tight ${
+                status === "missing" ? "text-muted/55" : "text-muted"
+              }`}
+            >
+              {label}
+            </span>
+          </>
+        )}
 
         {!variantMode && (
           <>
@@ -400,6 +440,7 @@ export function StickerChip({ code, label, isFoil }: Props) {
           </div>,
           document.body,
         )}
+
     </>
   );
 }

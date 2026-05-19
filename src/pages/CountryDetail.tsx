@@ -28,6 +28,7 @@ export function CountryDetail() {
   }
   const total = country.stickers.length;
   const pct = Math.round((owned / total) * 100);
+  const hasStickerArt = country.stickers.some((s) => Boolean(s.image));
   const countryIndex = COUNTRIES.findIndex((c) => c.code === country.code);
   const previousCountry = countryIndex > 0 ? COUNTRIES[countryIndex - 1] : undefined;
   const nextCountry =
@@ -38,6 +39,7 @@ export function CountryDetail() {
   return (
     <div className="album-page flex flex-1 flex-col min-h-0">
       <div className="flex-none px-4 pt-4 pb-3 bg-bg/95 border-b border-border shadow-[0_12px_24px_rgba(0,0,0,0.2)]">
+        <div className="mx-auto w-full max-w-7xl">
         <div className="app-header px-0 py-0">
           <div className="flex items-center gap-3">
           <button
@@ -94,9 +96,11 @@ export function CountryDetail() {
             <ChevronRight size={14} />
           </button>
         </div>
+        </div>
       </div>
 
-      <div className="scroll-area flex-1 px-3 py-4">
+      <div className="scroll-area flex-1 px-3 py-4 md:px-6">
+        <div className="mx-auto w-full max-w-7xl">
         <div className="mb-4 flex items-center justify-between px-1">
           <h2 className="album-section-label">Figurinhas</h2>
           <span className="text-[10px] font-bold uppercase tracking-wide text-muted">
@@ -104,13 +108,20 @@ export function CountryDetail() {
           </span>
         </div>
 
-        <div className="grid grid-cols-4 gap-2.5 mb-4">
+        <div
+          className={`mb-4 grid gap-2.5 ${
+            hasStickerArt
+              ? "grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7"
+              : "grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8"
+          }`}
+        >
           {country.stickers.map((sticker) => (
             <StickerChip
               key={sticker.code ?? sticker.number}
               code={getStickerCode(country.code, sticker)}
               label={sticker.label}
               isFoil={sticker.isFoil}
+              image={sticker.image}
             />
           ))}
         </div>
@@ -160,6 +171,7 @@ export function CountryDetail() {
               <Square size={14} /> Confirmar
             </button>
           )}
+        </div>
         </div>
       </div>
     </div>
