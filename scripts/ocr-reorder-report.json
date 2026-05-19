@@ -1,0 +1,38 @@
+[
+  {
+    "folder": "ned",
+    "ok": true,
+    "mean": 85.22222222222223,
+    "moves": [
+      "15.png -> slot 3 (Virgil van Dijk)",
+      "19.png -> slot 4 (Nathan Ak\u00e9)",
+      "18.png -> slot 5 (Jurri\u00ebn Timber)",
+      "16.png -> slot 6 (Micky van de Ven)",
+      "17.png -> slot 7 (Jeremie Frimpong)",
+      "12.png -> slot 8 (Denzel Dumfries)",
+      "14.png -> slot 9 (Jan Paul van Hecke)",
+      "05.png -> slot 10 (Tijjani Reijnders)",
+      "08.png -> slot 11 (Ryan Gravenberch)",
+      "09.png -> slot 12 (Teun Koopmeiners)",
+      "11.png -> slot 14 (Frenkie de Jong)",
+      "07.png -> slot 15 (Xavi Simons)",
+      "06.png -> slot 16 (Justin Kluivert)",
+      "03.png -> slot 17 (Memphis Depay)",
+      "04.png -> slot 18 (Donyell Malen)",
+      "10.png -> slot 19 (Wout Weghorst)"
+    ]
+  },
+  {
+    "folder": "par",
+    "ok": true,
+    "mean": 85.27777777777777,
+    "moves": [
+      "16.png -> slot 2 (Roberto Fern\u00e1ndez)",
+      "18.png -> slot 9 (Math\u00edas Villasanti)",
+      "19.png -> slot 16 (Miguel Almir\u00f3n)",
+      "20.png -> slot 18 (Braian Samudio)",
+      "02.png -> slot 19 (Hugo Quintana)",
+      "09.png -> slot 20 (Diego Le\u00f3n)"
+    ]
+  }
+]

@@ -1,3 +1,17 @@
+import grupoAImages from "@/data/grupo-a-images.json";
+import grupoBImages from "@/data/grupo-b-images.json";
+import grupoCImages from "@/data/grupo-c-images.json";
+import grupoDImages from "@/data/grupo-d-images.json";
+import grupoEImages from "@/data/grupo-e-images.json";
+import grupoFImages from "@/data/grupo-f-images.json";
+import grupoGImages from "@/data/grupo-g-images.json";
+import grupoHImages from "@/data/grupo-h-images.json";
+import grupoIImages from "@/data/grupo-i-images.json";
+import grupoJImages from "@/data/grupo-j-images.json";
+import grupoKImages from "@/data/grupo-k-images.json";
+import grupoLImages from "@/data/grupo-l-images.json";
+import { PLAYER_ROSTERS } from "@/data/players";
+
 export type Confederation =
   | "CONMEBOL"
   | "UEFA"
@@ -26,6 +40,7 @@ export interface StickerDef {
   label: string;
   code?: string;
   isFoil?: boolean;
+  image?: string;
 }
 
 export interface Country {
@@ -38,11 +53,145 @@ export interface Country {
 }
 
 function makeStickers(count = 20): StickerDef[] {
-  return Array.from({ length: count }, (_, i) => ({
-    number: i + 1,
-    label: i === 0 ? "Escudo" : i === 1 ? "Foto oficial" : `Jogador ${i - 1}`,
-    isFoil: i === 0,
-  }));
+  return Array.from({ length: count }, (_, i) => {
+    const number = i + 1;
+    if (number === 1) {
+      return { number, label: "Escudo", isFoil: true };
+    }
+    if (number === 13) {
+      return { number, label: "Foto oficial" };
+    }
+    const playerNum = number < 13 ? number - 1 : number - 2;
+    return { number, label: `Jogador ${playerNum}` };
+  });
+}
+
+function makePlayerStickers(players: readonly string[]): StickerDef[] {
+  const roster = [...players];
+  while (roster.length < 18) {
+    roster.push(`Jogador ${roster.length + 1}`);
+  }
+  return [
+    { number: 1, label: "Escudo", isFoil: true },
+    ...roster.slice(0, 11).map((label, i) => ({ number: i + 2, label })),
+    { number: 13, label: "Foto oficial" },
+    ...roster.slice(11, 18).map((label, i) => ({ number: i + 14, label })),
+  ];
+}
+
+function stickersFor(code: string): StickerDef[] {
+  const players = PLAYER_ROSTERS[code];
+  return players ? makePlayerStickers(players) : makeStickers();
+}
+
+function withImages(
+  stickers: StickerDef[],
+  images: Partial<Record<number, string>>,
+): StickerDef[] {
+  return stickers.map((s) => {
+    const n = typeof s.number === "number" ? s.number : Number(s.number);
+    const image = images[n];
+    return image ? { ...s, image } : s;
+  });
+}
+
+const GRUPO_A_CODES = ["MEX", "RSA", "KOR", "CZE"] as const;
+const GRUPO_B_CODES = ["CAN", "BIH", "QAT", "SUI"] as const;
+const GRUPO_C_CODES = ["BRA", "MAR", "HAI", "SCO"] as const;
+const GRUPO_D_CODES = ["USA", "PAR", "AUS", "TUR"] as const;
+const GRUPO_E_CODES = ["GER", "CUW", "CIV", "ECU"] as const;
+const GRUPO_F_CODES = ["NED", "JPN", "SWE", "TUN"] as const;
+const GRUPO_G_CODES = ["BEL", "EGY", "IRN", "NZL"] as const;
+const GRUPO_H_CODES = ["ESP", "CPV", "KSA", "URU"] as const;
+const GRUPO_I_CODES = ["FRA", "SEN", "IRQ", "NOR"] as const;
+const GRUPO_J_CODES = ["ARG", "ALG", "AUT", "JOR"] as const;
+const GRUPO_K_CODES = ["POR", "COD", "UZB", "COL"] as const;
+const GRUPO_L_CODES = ["ENG", "CRO", "GHA", "PAN"] as const;
+
+const GRUPO_E_TO_L_IMAGES = {
+  E: grupoEImages,
+  F: grupoFImages,
+  G: grupoGImages,
+  H: grupoHImages,
+  I: grupoIImages,
+  J: grupoJImages,
+  K: grupoKImages,
+  L: grupoLImages,
+} as const;
+
+type GrupoEtoL = keyof typeof GRUPO_E_TO_L_IMAGES;
+
+const GRUPO_E_TO_L_CODES = {
+  E: GRUPO_E_CODES,
+  F: GRUPO_F_CODES,
+  G: GRUPO_G_CODES,
+  H: GRUPO_H_CODES,
+  I: GRUPO_I_CODES,
+  J: GRUPO_J_CODES,
+  K: GRUPO_K_CODES,
+  L: GRUPO_L_CODES,
+} as const;
+
+function grupoImageMap(
+  manifest: Record<string, Record<string, string>>,
+  code: string,
+): Partial<Record<number, string>> {
+  const raw = manifest[code.toLowerCase()];
+  if (!raw) return {};
+  return Object.fromEntries(
+    Object.entries(raw).map(([slot, path]) => [Number(slot), path]),
+  );
+}
+
+function stickersForGrupoA(code: (typeof GRUPO_A_CODES)[number]): StickerDef[] {
+  return withImages(stickersFor(code), grupoImageMap(grupoAImages, code));
+}
+
+function stickersForGrupoB(code: (typeof GRUPO_B_CODES)[number]): StickerDef[] {
+  return withImages(stickersFor(code), grupoImageMap(grupoBImages, code));
+}
+
+function stickersForGrupoC(code: (typeof GRUPO_C_CODES)[number]): StickerDef[] {
+  return withImages(stickersFor(code), grupoImageMap(grupoCImages, code));
+}
+
+function stickersForGrupoD(code: (typeof GRUPO_D_CODES)[number]): StickerDef[] {
+  return withImages(stickersFor(code), grupoImageMap(grupoDImages, code));
+}
+
+function stickersForGrupoEtoL<G extends GrupoEtoL>(
+  group: G,
+  code: (typeof GRUPO_E_TO_L_CODES)[G][number],
+): StickerDef[] {
+  return withImages(
+    stickersFor(code),
+    grupoImageMap(GRUPO_E_TO_L_IMAGES[group], code),
+  );
+}
+
+function stickersForGrupoE(code: (typeof GRUPO_E_CODES)[number]): StickerDef[] {
+  return stickersForGrupoEtoL("E", code);
+}
+function stickersForGrupoF(code: (typeof GRUPO_F_CODES)[number]): StickerDef[] {
+  return stickersForGrupoEtoL("F", code);
+}
+function stickersForGrupoG(code: (typeof GRUPO_G_CODES)[number]): StickerDef[] {
+  return stickersForGrupoEtoL("G", code);
+}
+function stickersForGrupoH(code: (typeof GRUPO_H_CODES)[number]): StickerDef[] {
+  return stickersForGrupoEtoL("H", code);
+}
+function stickersForGrupoI(code: (typeof GRUPO_I_CODES)[number]): StickerDef[] {
+  return stickersForGrupoEtoL("I", code);
+}
+function stickersForGrupoJ(code: (typeof GRUPO_J_CODES)[number]): StickerDef[] {
+  return stickersForGrupoEtoL("J", code);
+}
+function stickersForGrupoK(code: (typeof GRUPO_K_CODES)[number]): StickerDef[] {
+  return stickersForGrupoEtoL("K", code);
+}
+function stickersForGrupoL(code: (typeof GRUPO_L_CODES)[number]): StickerDef[] {
+  return stickersForGrupoEtoL("L", code);
 }
 
 function makeSpecialStickers(): StickerDef[] {
@@ -65,7 +214,7 @@ function makeCocaColaStickers(): StickerDef[] {
 }
 
 // Groups A-L as listed in the Panini FIFA World Cup 2026 album.
-// Each country currently has 20 sticker slots.
+// Each country has 20 slots: 1 = escudo, 13 = foto da seleção, demais = jogadores.
 export const COUNTRIES: Country[] = [
   // Group A
   {
@@ -74,7 +223,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇲🇽",
     confederation: "CONCACAF",
     group: "A",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoA("MEX"),
   },
   {
     code: "RSA",
@@ -82,7 +231,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇿🇦",
     confederation: "CAF",
     group: "A",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoA("RSA"),
   },
   {
     code: "KOR",
@@ -90,7 +239,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇰🇷",
     confederation: "AFC",
     group: "A",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoA("KOR"),
   },
   {
     code: "CZE",
@@ -98,7 +247,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇨🇿",
     confederation: "UEFA",
     group: "A",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoA("CZE"),
   },
 
   // Group B
@@ -108,7 +257,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇨🇦",
     confederation: "CONCACAF",
     group: "B",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoB("CAN"),
   },
   {
     code: "BIH",
@@ -116,7 +265,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇧🇦",
     confederation: "UEFA",
     group: "B",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoB("BIH"),
   },
   {
     code: "QAT",
@@ -124,7 +273,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇶🇦",
     confederation: "AFC",
     group: "B",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoB("QAT"),
   },
   {
     code: "SUI",
@@ -132,7 +281,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇨🇭",
     confederation: "UEFA",
     group: "B",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoB("SUI"),
   },
 
   // Group C
@@ -142,7 +291,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇧🇷",
     confederation: "CONMEBOL",
     group: "C",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoC("BRA"),
   },
   {
     code: "MAR",
@@ -150,7 +299,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇲🇦",
     confederation: "CAF",
     group: "C",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoC("MAR"),
   },
   {
     code: "HAI",
@@ -158,7 +307,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇭🇹",
     confederation: "CONCACAF",
     group: "C",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoC("HAI"),
   },
   {
     code: "SCO",
@@ -166,7 +315,7 @@ export const COUNTRIES: Country[] = [
     flag: "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
     confederation: "UEFA",
     group: "C",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoC("SCO"),
   },
 
   // Group D
@@ -176,7 +325,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇺🇸",
     confederation: "CONCACAF",
     group: "D",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoD("USA"),
   },
   {
     code: "PAR",
@@ -184,7 +333,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇵🇾",
     confederation: "CONMEBOL",
     group: "D",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoD("PAR"),
   },
   {
     code: "AUS",
@@ -192,7 +341,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇦🇺",
     confederation: "AFC",
     group: "D",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoD("AUS"),
   },
   {
     code: "TUR",
@@ -200,7 +349,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇹🇷",
     confederation: "UEFA",
     group: "D",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoD("TUR"),
   },
 
   // Group E
@@ -210,7 +359,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇩🇪",
     confederation: "UEFA",
     group: "E",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoE("GER"),
   },
   {
     code: "CUW",
@@ -218,7 +367,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇨🇼",
     confederation: "CONCACAF",
     group: "E",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoE("CUW"),
   },
   {
     code: "CIV",
@@ -226,7 +375,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇨🇮",
     confederation: "CAF",
     group: "E",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoE("CIV"),
   },
   {
     code: "ECU",
@@ -234,7 +383,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇪🇨",
     confederation: "CONMEBOL",
     group: "E",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoE("ECU"),
   },
 
   // Group F
@@ -244,7 +393,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇳🇱",
     confederation: "UEFA",
     group: "F",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoF("NED"),
   },
   {
     code: "JPN",
@@ -252,7 +401,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇯🇵",
     confederation: "AFC",
     group: "F",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoF("JPN"),
   },
   {
     code: "SWE",
@@ -260,7 +409,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇸🇪",
     confederation: "UEFA",
     group: "F",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoF("SWE"),
   },
   {
     code: "TUN",
@@ -268,7 +417,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇹🇳",
     confederation: "CAF",
     group: "F",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoF("TUN"),
   },
 
   // Group G
@@ -278,7 +427,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇧🇪",
     confederation: "UEFA",
     group: "G",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoG("BEL"),
   },
   {
     code: "EGY",
@@ -286,7 +435,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇪🇬",
     confederation: "CAF",
     group: "G",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoG("EGY"),
   },
   {
     code: "IRN",
@@ -294,7 +443,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇮🇷",
     confederation: "AFC",
     group: "G",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoG("IRN"),
   },
   {
     code: "NZL",
@@ -302,7 +451,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇳🇿",
     confederation: "OFC",
     group: "G",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoG("NZL"),
   },
 
   // Group H
@@ -312,7 +461,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇪🇸",
     confederation: "UEFA",
     group: "H",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoH("ESP"),
   },
   {
     code: "CPV",
@@ -320,7 +469,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇨🇻",
     confederation: "CAF",
     group: "H",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoH("CPV"),
   },
   {
     code: "KSA",
@@ -328,7 +477,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇸🇦",
     confederation: "AFC",
     group: "H",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoH("KSA"),
   },
   {
     code: "URU",
@@ -336,7 +485,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇺🇾",
     confederation: "CONMEBOL",
     group: "H",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoH("URU"),
   },
 
   // Group I
@@ -346,7 +495,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇫🇷",
     confederation: "UEFA",
     group: "I",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoI("FRA"),
   },
   {
     code: "SEN",
@@ -354,7 +503,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇸🇳",
     confederation: "CAF",
     group: "I",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoI("SEN"),
   },
   {
     code: "IRQ",
@@ -362,7 +511,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇮🇶",
     confederation: "AFC",
     group: "I",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoI("IRQ"),
   },
   {
     code: "NOR",
@@ -370,7 +519,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇳🇴",
     confederation: "UEFA",
     group: "I",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoI("NOR"),
   },
 
   // Group J
@@ -380,7 +529,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇦🇷",
     confederation: "CONMEBOL",
     group: "J",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoJ("ARG"),
   },
   {
     code: "ALG",
@@ -388,7 +537,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇩🇿",
     confederation: "CAF",
     group: "J",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoJ("ALG"),
   },
   {
     code: "AUT",
@@ -396,7 +545,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇦🇹",
     confederation: "UEFA",
     group: "J",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoJ("AUT"),
   },
   {
     code: "JOR",
@@ -404,7 +553,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇯🇴",
     confederation: "AFC",
     group: "J",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoJ("JOR"),
   },
 
   // Group K
@@ -414,7 +563,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇵🇹",
     confederation: "UEFA",
     group: "K",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoK("POR"),
   },
   {
     code: "COD",
@@ -422,7 +571,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇨🇩",
     confederation: "CAF",
     group: "K",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoK("COD"),
   },
   {
     code: "UZB",
@@ -430,7 +579,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇺🇿",
     confederation: "AFC",
     group: "K",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoK("UZB"),
   },
   {
     code: "COL",
@@ -438,7 +587,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇨🇴",
     confederation: "CONMEBOL",
     group: "K",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoK("COL"),
   },
 
   // Group L
@@ -448,7 +597,7 @@ export const COUNTRIES: Country[] = [
     flag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
     confederation: "UEFA",
     group: "L",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoL("ENG"),
   },
   {
     code: "CRO",
@@ -456,7 +605,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇭🇷",
     confederation: "UEFA",
     group: "L",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoL("CRO"),
   },
   {
     code: "GHA",
@@ -464,7 +613,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇬🇭",
     confederation: "CAF",
     group: "L",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoL("GHA"),
   },
   {
     code: "PAN",
@@ -472,7 +621,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇵🇦",
     confederation: "CONCACAF",
     group: "L",
-    stickers: makeStickers(),
+    stickers: stickersForGrupoL("PAN"),
   },
   {
     code: "SPC",
