@@ -226,17 +226,16 @@ export function StickerChip({ code, label, isFoil, image }: Props) {
         onPointerLeave={handlePointerLeave}
         onPointerCancel={handlePointerCancel}
         className={`chip-press relative flex flex-col items-stretch justify-end rounded-xl border select-none touch-none overflow-hidden ${sizeClass} ${bg} ${foilRing}`}
+        style={{ WebkitTouchCallout: "none" }}
       >
         {showImage && image && (
-          <div className="absolute inset-0 flex items-center justify-center bg-zinc-950">
-            <img
-              src={image}
-              alt=""
-              className={`h-full w-full object-contain ${
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-zinc-950">
+            <span
+              aria-hidden="true"
+              className={`block h-full w-full bg-contain bg-center bg-no-repeat ${
                 isLandscape ? "scale-[1.42] rotate-90" : ""
               } ${imageMuted ? "opacity-60 saturate-50" : ""}`}
-              loading="lazy"
-              draggable={false}
+              style={{ backgroundImage: `url(${JSON.stringify(image)})` }}
             />
             <span className="pointer-events-none absolute inset-x-0 bottom-0 h-[40%] bg-gradient-to-t from-black/92 via-black/55 to-transparent" />
             {imageMuted && (
