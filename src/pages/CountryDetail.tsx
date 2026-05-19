@@ -142,7 +142,7 @@ export function CountryDetail() {
           </span>
         </div>
           <p className="mt-1 text-center text-[10px] font-medium text-text/45">
-            Toque para alternar · Segure para repetidas ou variantes
+            Toque para alternar · Segure para opções
           </p>
         </div>
 

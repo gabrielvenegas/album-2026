@@ -15,8 +15,6 @@ interface Props {
   image?: string;
 }
 
-type SlideOption = "duplicates" | "variants" | "cancel";
-
 export function StickerChip({ code, label, isFoil, image }: Props) {
   const status = useStickerStatus(code);
   const variants = useStickerVariants(code);
@@ -35,47 +33,31 @@ export function StickerChip({ code, label, isFoil, image }: Props) {
   const didLongPress = useRef(false);
   const didMove = useRef(false);
   const activePointerIdRef = useRef<number | null>(null);
-  const slideSelRef = useRef<SlideOption>("duplicates");
   const pointerXRef = useRef(0);
   const pointerYRef = useRef(0);
-  const originRef = useRef({ x: 0, y: 0 });
   const pointerStartRef = useRef({ x: 0, y: 0 });
 
-  const [slideActive, setSlideActive] = useState(false);
-  const [slideSel, setSlideSel] = useState<SlideOption>("duplicates");
-  const [variantMode, setVariantMode] = useState(false);
+  const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const clearTimer = useCallback(() => {
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
   }, []);
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
-      if (variantMode) return;
+      if (actionMenuOpen) return;
       didLongPress.current = false;
       didMove.current = false;
       activePointerIdRef.current = e.pointerId;
       pointerXRef.current = e.clientX;
       pointerYRef.current = e.clientY;
       pointerStartRef.current = { x: e.clientX, y: e.clientY };
-      const target = e.currentTarget;
-      const pointerId = e.pointerId;
       longPressTimer.current = setTimeout(() => {
         if (didMove.current) return;
         didLongPress.current = true;
-        originRef.current = { x: pointerXRef.current, y: pointerYRef.current };
-        if (target.isConnected && !target.hasPointerCapture(pointerId)) {
-          target.setPointerCapture(pointerId);
-        }
-        const initial: SlideOption =
-          pointerXRef.current < window.innerWidth / 2
-            ? "duplicates"
-            : "variants";
-        slideSelRef.current = initial;
-        setSlideSel(initial);
-        setSlideActive(true);
+        setActionMenuOpen(true);
       }, 500);
     },
-    [variantMode],
+    [actionMenuOpen],
   );
 
   const handlePointerMove = useCallback(
@@ -90,19 +72,6 @@ export function StickerChip({ code, label, isFoil, image }: Props) {
           clearTimer();
         }
         return;
-      }
-      e.preventDefault();
-      const dx = e.clientX - originRef.current.x;
-      const dy = e.clientY - originRef.current.y;
-      const next: SlideOption =
-        dy > 55 && dy > Math.abs(dx)
-          ? "cancel"
-          : e.clientX < window.innerWidth / 2
-            ? "duplicates"
-            : "variants";
-      if (next !== slideSelRef.current) {
-        slideSelRef.current = next;
-        setSlideSel(next);
       }
     },
     [clearTimer],
@@ -120,7 +89,6 @@ export function StickerChip({ code, label, isFoil, image }: Props) {
     if (didMove.current) {
       didMove.current = false;
       didLongPress.current = false;
-      setSlideActive(false);
       return;
     }
     if (!didLongPress.current) {
@@ -136,29 +104,13 @@ export function StickerChip({ code, label, isFoil, image }: Props) {
       cycleStatus(code);
       return;
     }
-    const sel = slideSelRef.current;
     didLongPress.current = false;
-    setSlideActive(false);
-    if (sel === "cancel") return;
-    if (sel === "duplicates") {
-      const next = window.prompt(
-        "Quantas repetidas você tem?",
-        String(repeatedCopies || 1),
-      );
-      if (next === null) return;
-      const copies = Number(next.replace(",", "."));
-      if (Number.isFinite(copies)) setDuplicateCopies(code, copies);
-    } else {
-      setVariantMode(true);
-    }
   }, [
     clearTimer,
     code,
     cycleStatus,
     confirmBeforeSelect,
     status,
-    repeatedCopies,
-    setDuplicateCopies,
   ]);
 
   const handlePointerLeave = useCallback(() => {
@@ -170,16 +122,31 @@ export function StickerChip({ code, label, isFoil, image }: Props) {
     didLongPress.current = false;
     didMove.current = false;
     activePointerIdRef.current = null;
-    setSlideActive(false);
   }, [clearTimer]);
 
-  const closeVariantMode = useCallback(
-    (e: React.PointerEvent) => {
-      e.stopPropagation();
-      clearTimer();
-      setVariantMode(false);
+  const closeActionMenu = useCallback(() => {
+    clearTimer();
+    didLongPress.current = false;
+    didMove.current = false;
+    setActionMenuOpen(false);
+  }, [clearTimer]);
+
+  const editDuplicates = useCallback(() => {
+    const next = window.prompt(
+      "Quantas repetidas você tem?",
+      String(repeatedCopies || 1),
+    );
+    if (next === null) return;
+    const copies = Number(next.replace(",", "."));
+    if (Number.isFinite(copies)) setDuplicateCopies(code, copies);
+    setActionMenuOpen(false);
+  }, [code, repeatedCopies, setDuplicateCopies]);
+
+  const handleVariantToggle = useCallback(
+    (variant: StickerVariant) => {
+      toggleVariant(code, variant);
     },
-    [clearTimer],
+    [code, toggleVariant],
   );
 
   const bg =
@@ -209,6 +176,7 @@ export function StickerChip({ code, label, isFoil, image }: Props) {
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerLeave}
         onPointerCancel={handlePointerCancel}
+        onContextMenu={(e) => e.preventDefault()}
         className={`chip-press relative flex flex-col items-stretch justify-end rounded-xl border select-none touch-pan-y overflow-hidden ${sizeClass} ${bg} ${foilRing}`}
         style={{ WebkitTouchCallout: "none" }}
       >
@@ -259,171 +227,117 @@ export function StickerChip({ code, label, isFoil, image }: Props) {
           </>
         )}
 
-        {!variantMode && (
-          <>
-            {status === "owned" && (
-              <span className="absolute right-1 top-1 rounded-md bg-owned/12 p-0.5">
-                <Check size={10} strokeWidth={3} />
-              </span>
-            )}
-            {status === "duplicate" && (
-              <span className="absolute top-1 right-1 text-[9px] bg-duplicate text-white rounded-md min-w-4 h-4 px-1 flex items-center justify-center font-black">
-                {count}
-              </span>
-            )}
-            {isFoil && (
-              <span className="absolute bottom-1 left-1 text-gold opacity-80">
-                <Sparkles size={8} />
-              </span>
-            )}
-            <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-1 pointer-events-none">
-              {VARIANTS.map((v) => (
-                <span
-                  key={v.id}
-                  className={`h-2.5 w-2.5 rounded-full border ${
-                    variants[v.id]
-                      ? v.on
-                      : status === "missing"
-                        ? "bg-transparent border-gold/20"
-                        : "bg-transparent border-white/20"
-                  }`}
-                />
-              ))}
-            </div>
-          </>
+        {status === "owned" && (
+          <span className="absolute right-1 top-1 rounded-md bg-owned/12 p-0.5">
+            <Check size={10} strokeWidth={3} />
+          </span>
         )}
-
-        {variantMode && (
-          <div
-            className="absolute inset-0 flex items-center justify-center bg-surface/95 rounded-xl z-20"
-            onPointerUp={closeVariantMode}
-          >
-            <div className="grid grid-cols-2 gap-2.5">
-              {VARIANTS.map((v) => (
-                <button
-                  key={v.id}
-                  type="button"
-                  aria-label={v.label}
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onPointerUp={(e) => e.stopPropagation()}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleVariant(code, v.id);
-                  }}
-                  className={`h-7 w-7 rounded-full border-2 transition-all active:scale-125 ${
-                    variants[v.id] ? `${v.on} scale-110` : v.off
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
+        {status === "duplicate" && (
+          <span className="absolute top-1 right-1 text-[9px] bg-duplicate text-white rounded-md min-w-4 h-4 px-1 flex items-center justify-center font-black">
+            {count}
+          </span>
         )}
+        {isFoil && (
+          <span className="absolute bottom-1 left-1 text-gold opacity-80">
+            <Sparkles size={8} />
+          </span>
+        )}
+        <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex gap-1 pointer-events-none">
+          {VARIANTS.map((v) => (
+            <span
+              key={v.id}
+              className={`h-2.5 w-2.5 rounded-full border ${
+                variants[v.id]
+                  ? v.on
+                  : status === "missing"
+                    ? "bg-transparent border-gold/20"
+                    : "bg-transparent border-white/20"
+              }`}
+            />
+          ))}
+        </div>
       </div>
 
-      {slideActive &&
+      {actionMenuOpen &&
         createPortal(
           <div
-            className="fixed inset-0 z-[100] flex flex-col pointer-events-none"
-            style={{ animation: "slide-overlay-in 180ms ease-out both" }}
+            className="fixed inset-0 z-[100] flex items-end bg-black/70 px-3 pb-3 backdrop-blur-sm"
+            onPointerDown={closeActionMenu}
           >
-            <div className="absolute inset-0 bg-black/82 backdrop-blur-sm" />
-
-            {/* Chip label */}
             <div
-              className="relative flex justify-center"
-              style={{
-                paddingTop: "calc(env(safe-area-inset-top, 0px) + 3rem)",
-              }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={`sticker-menu-${code}`}
+              className="w-full rounded-2xl border border-white/10 bg-surface p-3 shadow-2xl"
+              style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))" }}
+              onPointerDown={(e) => e.stopPropagation()}
             >
-              <span className="text-white/30 text-sm font-mono tracking-wider">
-                {code}
-              </span>
-            </div>
-
-            {/* Left / Right options */}
-            <div className="relative flex flex-[3] items-center">
-              {/* Repetidas */}
-              <div
-                className={`flex-1 flex flex-col items-center justify-center gap-5 transition-all duration-150 ${
-                  slideSel === "duplicates"
-                    ? "opacity-100 scale-100"
-                    : "opacity-20 scale-[0.93]"
-                }`}
-              >
-                <div
-                  className={`w-20 h-20 rounded-3xl flex items-center justify-center transition-colors duration-150 ${
-                    slideSel === "duplicates" ? "bg-duplicate" : "bg-white/10"
-                  }`}
-                >
-                  <span className="text-3xl font-bold text-white leading-none">
-                    +
-                  </span>
-                </div>
-                <div className="text-center px-6">
-                  <p className="text-xl font-bold text-white">Repetidas</p>
-                  <p className="text-sm text-white/50 mt-1">Qtd de cópias</p>
-                </div>
-              </div>
-
-              <div className="w-px bg-white/10 self-stretch my-20" />
-
-              {/* Colecionável */}
-              <div
-                className={`flex-1 flex flex-col items-center justify-center gap-5 transition-all duration-150 ${
-                  slideSel === "variants"
-                    ? "opacity-100 scale-100"
-                    : "opacity-20 scale-[0.93]"
-                }`}
-              >
-                <div
-                  className={`w-20 h-20 rounded-3xl flex items-center justify-center transition-colors duration-150 ${
-                    slideSel === "variants" ? "bg-gold" : "bg-white/10"
-                  }`}
-                >
-                  <Sparkles size={36} className="text-white" />
-                </div>
-                <div className="text-center px-6">
-                  <p className="text-xl font-bold text-white">Colecionável</p>
-                  <p className="text-sm text-white/50 mt-1">Tipo especial</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="relative flex justify-center">
-              <div className="w-1/3 h-px bg-white/10" />
-            </div>
-
-            {/* Cancel option */}
-            <div
-              className="relative flex flex-[2] items-center justify-center"
-              style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
-            >
-              <div
-                className={`flex flex-col items-center gap-5 transition-all duration-150 ${
-                  slideSel === "cancel"
-                    ? "opacity-100 scale-100"
-                    : "opacity-20 scale-[0.93]"
-                }`}
-              >
-                <div
-                  className={`w-20 h-20 rounded-3xl flex items-center justify-center transition-colors duration-150 ${
-                    slideSel === "cancel" ? "bg-white/20" : "bg-white/10"
-                  }`}
-                >
-                  <X size={36} className="text-white" />
-                </div>
-                <div className="text-center px-6">
-                  <p className="text-xl font-bold text-white">Cancelar</p>
-                  <p className="text-sm text-white/50 mt-1">
-                    Nenhuma alteração
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p
+                    id={`sticker-menu-${code}`}
+                    className="text-sm font-black text-text"
+                  >
+                    {code}
                   </p>
+                  <p className="mt-0.5 line-clamp-1 text-xs font-semibold text-muted">
+                    {label}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Fechar menu"
+                  onClick={closeActionMenu}
+                  className="chip-press flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/10 text-muted"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={editDuplicates}
+                className="chip-press mb-3 flex w-full items-center justify-between rounded-xl border border-duplicate/35 bg-duplicate/15 px-3 py-3 text-left"
+              >
+                <span>
+                  <span className="block text-sm font-black text-duplicate">
+                    Repetidas
+                  </span>
+                  <span className="mt-0.5 block text-xs font-semibold text-muted">
+                    Ajustar quantidade de cópias
+                  </span>
+                </span>
+                <span className="flex h-9 min-w-9 items-center justify-center rounded-lg bg-duplicate text-sm font-black text-white">
+                  {repeatedCopies || "+"}
+                </span>
+              </button>
+
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="text-sm font-black text-text">
+                    Colecionável
+                  </span>
+                  <Sparkles size={16} className="text-gold" />
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  {VARIANTS.map((v) => (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() => handleVariantToggle(v.id)}
+                      className={`chip-press flex h-12 items-center justify-center rounded-xl border-2 text-[10px] font-black ${
+                        variants[v.id] ? `${v.on} text-bg` : `${v.off} text-muted`
+                      }`}
+                    >
+                      {v.label}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
           </div>,
           document.body,
         )}
-
     </>
   );
 }
