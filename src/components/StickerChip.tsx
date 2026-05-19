@@ -38,8 +38,10 @@ export function StickerChip({ code, label, isFoil, image }: Props) {
   const pointerStartRef = useRef({ x: 0, y: 0 });
 
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
+  const [isHolding, setIsHolding] = useState(false);
   const clearTimer = useCallback(() => {
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
+    setIsHolding(false);
   }, []);
 
   const handlePointerDown = useCallback(
@@ -51,9 +53,11 @@ export function StickerChip({ code, label, isFoil, image }: Props) {
       pointerXRef.current = e.clientX;
       pointerYRef.current = e.clientY;
       pointerStartRef.current = { x: e.clientX, y: e.clientY };
+      setIsHolding(true);
       longPressTimer.current = setTimeout(() => {
         if (didMove.current) return;
         didLongPress.current = true;
+        setIsHolding(false);
         setActionMenuOpen(true);
       }, 500);
     },
@@ -180,6 +184,10 @@ export function StickerChip({ code, label, isFoil, image }: Props) {
         className={`chip-press relative flex flex-col items-stretch justify-end rounded-xl border select-none touch-pan-y overflow-hidden ${sizeClass} ${bg} ${foilRing}`}
         style={{ WebkitTouchCallout: "none" }}
       >
+        {isHolding && (
+          <span className="sticker-hold-progress pointer-events-none absolute inset-0 z-[4] rounded-xl" />
+        )}
+
         {showImage && image && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-zinc-950">
             <span
@@ -261,14 +269,14 @@ export function StickerChip({ code, label, isFoil, image }: Props) {
       {actionMenuOpen &&
         createPortal(
           <div
-            className="fixed inset-0 z-[100] flex items-end bg-black/70 px-3 pb-3 backdrop-blur-sm"
+            className="sticker-sheet-backdrop fixed inset-0 z-[100] flex items-end bg-black/70 px-3 pb-3 backdrop-blur-sm"
             onPointerDown={closeActionMenu}
           >
             <div
               role="dialog"
               aria-modal="true"
               aria-labelledby={`sticker-menu-${code}`}
-              className="w-full rounded-2xl border border-white/10 bg-surface p-3 shadow-2xl"
+              className="sticker-sheet-panel w-full rounded-2xl border border-white/10 bg-surface p-3 shadow-2xl"
               style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))" }}
               onPointerDown={(e) => e.stopPropagation()}
             >
