@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "stickers:webp": "node scripts/convert-stickers-to-webp.mjs"
   },
   "dependencies": {
     "html2canvas": "^1.4.1",
