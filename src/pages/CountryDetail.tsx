@@ -1,15 +1,20 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Check, ChevronLeft, ChevronRight, Square, RotateCcw } from "lucide-react";
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, Square, RotateCcw, Search, X } from "lucide-react";
 import { COUNTRIES, getCountryByCode, getStickerCode } from "@/data/album";
 import { useCollection, useCountryStats } from "@/store/useCollection";
 import { StickerChip } from "@/components/StickerChip";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 
 export function CountryDetail() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const country = code ? getCountryByCode(code) : undefined;
   const [confirmReset, setConfirmReset] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const { markMultiple, resetCountry } = useCollection();
 
@@ -18,6 +23,52 @@ export function CountryDetail() {
     [country]
   );
   const { owned, duplicates, missing } = useCountryStats(codes);
+
+  const filteredCountries = useMemo(() => {
+    if (!searchQuery) return [];
+    const q = searchQuery.toLowerCase();
+    return COUNTRIES.filter(
+      (c) => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q)
+    ).slice(0, 8);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (isSearchOpen) {
+      setSelectedIndex(0);
+      setTimeout(() => searchInputRef.current?.focus(), 10);
+    }
+  }, [isSearchOpen]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setIsSearchOpen(true);
+      }
+      if (e.key === "Escape") {
+        setIsSearchOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev + 1) % Math.max(1, filteredCountries.length));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev - 1 + filteredCountries.length) % Math.max(1, filteredCountries.length));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (filteredCountries[selectedIndex]) {
+        navigate(`/paises/${filteredCountries[selectedIndex].code}`);
+        setIsSearchOpen(false);
+        setSearchQuery("");
+      }
+    }
+  };
 
   if (!country) {
     return (
@@ -174,6 +225,82 @@ export function CountryDetail() {
         </div>
         </div>
       </div>
+
+      {isSearchOpen && createPortal(
+        <div 
+          className="sticker-sheet-backdrop fixed inset-0 z-[100] flex items-start justify-center bg-black/70 px-4 pt-[15vh] backdrop-blur-sm"
+          onClick={() => setIsSearchOpen(false)}
+        >
+          <div 
+            className="sticker-sheet-panel w-full max-w-lg overflow-hidden rounded-2xl border border-white/10 bg-surface shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="relative border-b border-white/5 p-4">
+              <Search className="absolute left-7 top-1/2 -translate-y-1/2 text-muted" size={18} />
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Buscar país ou código..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
+                className="w-full rounded-xl bg-white/5 py-3 pl-12 pr-10 text-base font-medium text-text placeholder:text-muted outline-none focus:ring-1 focus:ring-gold/50"
+              />
+              <button 
+                onClick={() => setIsSearchOpen(false)}
+                className="absolute right-7 top-1/2 -translate-y-1/2 text-muted hover:text-text"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            
+            <div className="max-h-[60vh] overflow-y-auto py-2">
+              {filteredCountries.length > 0 ? (
+                filteredCountries.map((c, i) => (
+                  <button
+                    key={c.code}
+                    onClick={() => {
+                      navigate(`/paises/${c.code}`);
+                      setIsSearchOpen(false);
+                      setSearchQuery("");
+                    }}
+                    onMouseEnter={() => setSelectedIndex(i)}
+                    className={`flex w-full items-center gap-3 px-6 py-3 text-left transition-colors ${
+                      i === selectedIndex ? "bg-white/10" : "hover:bg-white/5"
+                    }`}
+                  >
+                    <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/5 bg-white/5 text-xl shadow-inner">
+                      {c.flag}
+                    </span>
+                    <div className="flex-1">
+                      <p className={`text-sm font-bold ${i === selectedIndex ? "text-gold" : "text-text"}`}>
+                        {c.name}
+                      </p>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-muted">
+                        {c.code} · Grupo {c.group}
+                      </p>
+                    </div>
+                    {i === selectedIndex && (
+                      <span className="text-[10px] font-black text-gold/60 uppercase">
+                        Enter
+                      </span>
+                    )}
+                  </button>
+                ))
+              ) : searchQuery ? (
+                <div className="px-6 py-8 text-center text-sm text-muted">
+                  Nenhum país encontrado para "{searchQuery}"
+                </div>
+              ) : (
+                <div className="px-6 py-8 text-center text-sm text-muted">
+                  Digite para buscar países...
+                </div>
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
