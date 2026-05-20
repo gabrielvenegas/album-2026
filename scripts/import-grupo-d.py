@@ -35,8 +35,30 @@ def _sequential_grid(
 
 
 SLOTS: dict[str, dict[tuple[int, int, int], int]] = {
-    "usa": _sequential_grid(1, 5, 0),
-    "par": _sequential_grid(2, 5, 1),
+    "usa": {
+        **_sequential_grid(1, 5, 0),
+        (1, 0, 2): 14,
+        (1, 0, 3): 17,
+        (1, 1, 2): 18,
+        (1, 1, 3): 10,
+        (1, 2, 1): 6,
+        (1, 2, 2): 3,
+        (1, 2, 3): 16,
+        (1, 3, 1): 11,
+        (1, 3, 3): 19,
+        (5, 0, 0): 7,
+        (5, 0, 1): 2,
+        (5, 0, 2): 9,
+    },
+    "par": {
+        **_sequential_grid(2, 5, 1),
+        (2, 0, 2): 16,
+        (2, 2, 1): 19,
+        (2, 3, 3): 17,
+        (5, 1, 0): 20,
+        (5, 1, 2): 2,
+        (5, 1, 3): 9,
+    },
     "aus": _sequential_grid(3, 5, 2),
     "tur": _sequential_grid(4, 5, 3),
 }
