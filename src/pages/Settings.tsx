@@ -122,7 +122,8 @@ export function Settings() {
   }
 
   return (
-    <div className="scroll-area album-page flex-1 px-4 py-6">
+    <div className="scroll-area album-page flex-1">
+      <div className="page-container mx-auto max-w-3xl py-6">
       {toast && (
         <div className="toast-safe fixed left-4 right-4 z-50 bg-owned text-white text-sm font-semibold rounded-xl px-4 py-3 text-center shadow-lg">
           {toast}
@@ -420,6 +421,7 @@ export function Settings() {
       <p className="text-center text-xs text-muted mt-6 pb-2">
         Álbum Copa 2026 · Dados salvos localmente
       </p>
+      </div>
     </div>
   );
 }

@@ -44,10 +44,11 @@ export function Dashboard() {
     .slice(0, 5);
 
   return (
-    <div className="scroll-area album-page flex-1 px-4 pb-6">
+    <div className="scroll-area album-page flex-1">
+      <div className="page-container pb-6">
       <div className="app-header mb-5 px-0">
         <p className="app-header-kicker">Copa do Mundo · 2026</p>
-        <h1 className="mt-7 text-3xl font-black leading-[0.95] text-text">
+        <h1 className="mt-7 text-3xl font-black leading-[0.95] text-text lg:text-4xl">
           Meu Álbum<br />
           <span className="text-gold">2026</span>
         </h1>
@@ -56,7 +57,9 @@ export function Dashboard() {
         </p>
       </div>
 
-      <div className="mb-6 flex items-center gap-5">
+      <div className="lg:grid lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:items-start lg:gap-8 xl:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
+      <div className="space-y-6">
+      <div className="mb-6 flex items-center gap-5 lg:mb-0">
         <div className="relative shrink-0 rounded-full bg-[#151b1f] p-2">
           <ProgressRing
             percent={pct}
@@ -105,7 +108,7 @@ export function Dashboard() {
         </span>
       </button>
 
-      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border mb-5">
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-border bg-border mb-5 lg:grid-cols-1">
         <ActionButton
           label="Países"
           Icon={Flag}
@@ -121,7 +124,7 @@ export function Dashboard() {
       {duplicates > 0 && (
         <button
           onClick={() => navigate("/repetidas")}
-          className="chip-press mb-6 flex w-full items-center gap-3 rounded-xl border border-duplicate/30 bg-duplicate/10 px-4 py-4 text-left"
+          className="chip-press mb-0 flex w-full items-center gap-3 rounded-xl border border-duplicate/30 bg-duplicate/10 px-4 py-4 text-left lg:mb-0"
         >
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-duplicate text-white">
             <Copy size={18} />
@@ -136,9 +139,11 @@ export function Dashboard() {
           </div>
         </button>
       )}
+      </div>
 
+      <div className="mt-6 space-y-6 lg:mt-0">
       {almostComplete.length > 0 && (
-        <div className="mb-6">
+        <div className="mb-0">
           <div className="mb-3 flex items-center gap-2">
             <Trophy size={14} className="text-gold" />
             <h2 className="album-section-label">Quase completos</h2>
@@ -159,9 +164,9 @@ export function Dashboard() {
       )}
 
       {worstCountries.length > 0 && (
-        <div className="mb-6">
+        <div className="mb-0">
           <h2 className="album-section-label mb-3">Mais incompletos</h2>
-          <div className="space-y-2">
+          <div className="space-y-2 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
             {worstCountries.map(({ country, missing: m, pct: p }) => (
               <CountryRow
                 key={country.code}
@@ -175,6 +180,9 @@ export function Dashboard() {
           </div>
         </div>
       )}
+      </div>
+      </div>
+      </div>
     </div>
   );
 }

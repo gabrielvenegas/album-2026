@@ -24,7 +24,8 @@ export default function App() {
       {showSplash && <SplashScreen onDone={handleSplashDone} />}
       <BrowserRouter>
         <div className="app-shell">
-          <div className="app-content flex-1 flex flex-col min-h-0">
+          <BottomNav />
+          <div className="app-content flex min-h-0 min-w-0 flex-1 flex-col">
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/paises" element={<Countries />} />
@@ -35,7 +36,6 @@ export default function App() {
             </Routes>
           </div>
         </div>
-        <BottomNav />
       </BrowserRouter>
     </>
   );

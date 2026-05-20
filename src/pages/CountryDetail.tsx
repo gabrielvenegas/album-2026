@@ -12,6 +12,7 @@ import {
 import { COUNTRIES, getCountryByCode, getStickerCode } from "@/data/album";
 import { useCollection, useCountryStats } from "@/store/useCollection";
 import { StickerChip } from "@/components/StickerChip";
+import { CountryAlbumHero } from "@/components/CountryAlbumHero";
 import { useMemo, useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 
@@ -107,10 +108,17 @@ export function CountryDetail() {
       ? COUNTRIES[countryIndex + 1]
       : undefined;
 
+  const emblemSticker = country.stickers.find((s) => s.number === 1);
+  const teamPhotoSticker = country.stickers.find((s) => s.number === 13);
+  const playerStickers = country.stickers.filter(
+    (s) => s.number !== 1 && s.number !== 13,
+  );
+  const showAlbumHero = Boolean(emblemSticker?.image || teamPhotoSticker?.image);
+
   return (
     <div className="album-page flex flex-1 flex-col min-h-0">
-      <div className="flex-none px-4 pt-4 pb-3 bg-bg/95 border-b border-border shadow-[0_12px_24px_rgba(0,0,0,0.2)]">
-        <div className="mx-auto w-full max-w-7xl">
+      <div className="flex-none border-b border-border bg-bg/95 px-4 pb-3 pt-4 shadow-[0_12px_24px_rgba(0,0,0,0.2)] md:px-6">
+        <div className="page-container">
           <div className="app-header px-0 py-0">
             <div className="flex items-center gap-3">
               <button
@@ -186,11 +194,19 @@ export function CountryDetail() {
       </div>
 
       <div className="scroll-area flex-1 px-3 py-4 md:px-6">
-        <div className="mx-auto w-full max-w-7xl">
+        <div className="page-container">
+          {showAlbumHero && (
+            <CountryAlbumHero
+              countryCode={country.code}
+              emblem={emblemSticker}
+              teamPhoto={teamPhotoSticker}
+            />
+          )}
+
           <div className="mb-4 flex items-center justify-between px-1">
-            <h2 className="album-section-label">Figurinhas</h2>
+            <h2 className="album-section-label">Jogadores</h2>
             <span className="text-[10px] font-bold uppercase tracking-wide text-muted">
-              {total} espaços
+              {playerStickers.length} figurinhas
             </span>
           </div>
 
@@ -201,7 +217,7 @@ export function CountryDetail() {
                 : "grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8"
             }`}
           >
-            {country.stickers.map((sticker) => (
+            {playerStickers.map((sticker) => (
               <StickerChip
                 key={sticker.code ?? sticker.number}
                 code={getStickerCode(country.code, sticker)}
