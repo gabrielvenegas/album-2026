@@ -3,8 +3,9 @@ import {
   ClipboardCopy,
   Check,
   Trophy,
-  Repeat2,
   Wand2,
+  Send,
+  Inbox,
 } from "lucide-react";
 import { COUNTRIES, getStickerCode } from "@/data/album";
 import { useCollection } from "@/store/useCollection";
@@ -16,6 +17,18 @@ const VALID_STICKER_CODES = new Set(
     country.stickers.map((sticker) => getStickerCode(country.code, sticker)),
   ),
 );
+const ALL_STICKER_CODES = COUNTRIES.flatMap((country) =>
+  country.stickers.map((sticker) => getStickerCode(country.code, sticker)),
+);
+const STICKER_INDEX_BY_CODE = new Map(
+  ALL_STICKER_CODES.map((code, index) => [code, index] as const),
+);
+
+interface TradeProfile {
+  owned: Set<string>;
+  duplicateCounts: Map<string, number>;
+  source: "share" | "text" | "ai";
+}
 
 export function Duplicates() {
   const { statuses, dupCounts, apiKey, decrementDup, setStatus } =
@@ -51,14 +64,25 @@ export function Duplicates() {
     ),
   );
   const localFriendDuplicateCounts = parseDuplicateText(friendInput);
-  const friendDuplicateCounts =
-    aiParsedDuplicates ?? localFriendDuplicateCounts;
+  const sharedProfile = parseSharedTradeProfile(friendInput);
+  const friendProfile: TradeProfile =
+    aiParsedDuplicates
+      ? { owned: new Set(), duplicateCounts: aiParsedDuplicates, source: "ai" }
+      : sharedProfile ?? {
+          owned: new Set(),
+          duplicateCounts: localFriendDuplicateCounts,
+          source: "text",
+        };
+  const friendDuplicateCounts = friendProfile.duplicateCounts;
   const friendDuplicateCodes = [...friendDuplicateCounts.keys()];
   const friendCanGive = friendDuplicateCodes.filter(
     (code) => !hasSticker(code),
   );
   const iCanGive = [...myDuplicateCounts.keys()].filter(
-    (code) => !friendDuplicateCounts.has(code),
+    (code) =>
+      friendProfile.source === "share"
+        ? !friendProfile.owned.has(code)
+        : !friendDuplicateCounts.has(code),
   );
   const suggestedSwaps = friendCanGive
     .slice(0, iCanGive.length)
@@ -70,13 +94,21 @@ export function Duplicates() {
   }
 
   async function handleCopyText() {
-    const text = formatDuplicatesAsText(
+    const duplicateText = formatDuplicatesAsText(
       groups.map((g) => ({
         country: g.country.name,
         flag: g.country.flag,
         stickers: g.stickers,
       })),
     );
+    const text = [
+      "Minha lista para troca no álbum da Copa 2026:",
+      "",
+      duplicateText,
+      "",
+      "Código para comparar no app:",
+      createTradeShareCode(statuses, myDuplicateCounts),
+    ].join("\n");
 
     try {
       await copyTextToClipboard(text);
@@ -161,79 +193,115 @@ export function Duplicates() {
       </div>
 
       <div className="scroll-area flex-1 px-4 pb-4">
-        <div className="flex gap-2 mb-4">
-          <button
-            onClick={handleCopyText}
-            className="chip-press flex-1 album-control text-xs font-black rounded-xl py-2.5 flex items-center justify-center gap-1.5"
-          >
-            {copied ? <Check size={14} /> : <ClipboardCopy size={14} />}
-            {copied ? "Copiado!" : "Copiar texto"}
-          </button>
-        </div>
-
-        <div className="mb-4 sticker-slot rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-3">
-            <Repeat2 size={15} className="text-gold" />
-            <p className="album-section-label">Comparar troca</p>
+        <div className="mb-4 grid gap-3">
+          <div className="sticker-slot rounded-xl p-4">
+            <div className="mb-3 flex items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-duplicate/15 text-duplicate">
+                <Send size={17} />
+              </div>
+              <div className="min-w-0">
+                <p className="album-section-label">1. Compartilhe sua lista</p>
+                <p className="mt-1 text-xs font-semibold leading-relaxed text-muted">
+                  O texto inclui suas repetidas e um código compacto com as
+                  figurinhas que você já tem.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleCopyText}
+              className="chip-press flex w-full items-center justify-center gap-1.5 rounded-xl bg-duplicate px-3 py-3 text-xs font-black text-white"
+            >
+              {copied ? <Check size={14} /> : <ClipboardCopy size={14} />}
+              {copied ? "Copiado!" : "Copiar lista de troca"}
+            </button>
           </div>
-          <textarea
-            value={friendInput}
-            onChange={(e) => {
-              setFriendInput(e.target.value);
-              setAiParsedDuplicates(null);
-              setAiParseError("");
-            }}
-            placeholder="Cole aqui a lista de repetidas do seu amigo..."
-            className="w-full h-28 album-control rounded-xl px-3 py-2.5 text-base text-text placeholder:text-muted outline-none focus:border-gold/60 resize-none transition-colors"
-          />
 
-          {friendInput.trim() && (
-            <div className="mt-3">
-              <button
-                onClick={handleAnalyzeFriendList}
-                disabled={aiParsing}
-                className="chip-press mb-3 w-full border border-gold/30 bg-gold/15 text-gold text-xs font-black rounded-xl py-2.5 flex items-center justify-center gap-1.5 disabled:opacity-50"
-              >
-                <Wand2 size={14} />
-                {aiParsing ? "Analisando lista..." : "Entender lista com IA"}
-              </button>
+          <div className="sticker-slot rounded-xl p-4">
+            <div className="mb-3 flex items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gold/15 text-gold">
+                <Inbox size={17} />
+              </div>
+              <div className="min-w-0">
+                <p className="album-section-label">2. Compare com alguém</p>
+                <p className="mt-1 text-xs font-semibold leading-relaxed text-muted">
+                  Cole o texto do app para uma comparação completa, ou uma lista
+                  simples de repetidas para uma comparação rápida.
+                </p>
+              </div>
+            </div>
+            <textarea
+              value={friendInput}
+              onChange={(e) => {
+                setFriendInput(e.target.value);
+                setAiParsedDuplicates(null);
+                setAiParseError("");
+              }}
+              placeholder="Cole aqui a lista ou o código de troca..."
+              className="w-full h-28 album-control rounded-xl px-3 py-2.5 text-base text-text placeholder:text-muted outline-none focus:border-gold/60 resize-none transition-colors"
+            />
 
-              <div className="mb-3 rounded-xl border border-white/10 bg-bg/55 px-3 py-2">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-muted">
-                  {aiParsedDuplicates
-                    ? "Resultado da IA"
-                    : "Leitura automática local"}
-                </p>
-                <p className="mt-0.5 text-xs font-semibold text-text/75">
-                  {friendDuplicateCounts.size} tipo(s) de repetida(s)
-                  encontrados
-                </p>
-                {localFriendDuplicateCounts.size > 0 &&
-                  aiParsedDuplicates &&
-                  localFriendDuplicateCounts.size !==
-                    aiParsedDuplicates.size && (
+            {friendInput.trim() && (
+              <div className="mt-3">
+                {friendProfile.source !== "share" && (
+                  <button
+                    onClick={handleAnalyzeFriendList}
+                    disabled={aiParsing}
+                    className="chip-press mb-3 w-full border border-gold/30 bg-gold/15 text-gold text-xs font-black rounded-xl py-2.5 flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    <Wand2 size={14} />
+                    {aiParsing
+                      ? "Analisando lista..."
+                      : "Entender lista com IA"}
+                  </button>
+                )}
+
+                <div className="mb-3 rounded-xl border border-white/10 bg-bg/55 px-3 py-2">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-muted">
+                    {friendProfile.source === "share"
+                      ? "Código do app"
+                      : aiParsedDuplicates
+                        ? "Resultado da IA"
+                        : "Leitura automática local"}
+                  </p>
+                  <p className="mt-0.5 text-xs font-semibold text-text/75">
+                    {friendDuplicateCounts.size} tipo(s) de repetida(s)
+                    encontrados
+                  </p>
+                  {friendProfile.source === "share" && (
                     <p className="mt-1 text-[10px] text-muted">
-                      A IA substituiu a leitura local para essa comparação.
+                      A comparação também considera o que a outra pessoa já tem.
                     </p>
                   )}
-              </div>
+                  {localFriendDuplicateCounts.size > 0 &&
+                    aiParsedDuplicates &&
+                    localFriendDuplicateCounts.size !==
+                      aiParsedDuplicates.size && (
+                      <p className="mt-1 text-[10px] text-muted">
+                        A IA substituiu a leitura local para essa comparação.
+                      </p>
+                    )}
+                </div>
 
-              {aiParseError && (
-                <p className="mb-3 rounded-xl border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-400">
-                  {aiParseError}
-                </p>
-              )}
+                {aiParseError && (
+                  <p className="mb-3 rounded-xl border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-400">
+                    {aiParseError}
+                  </p>
+                )}
 
-              <div className="grid grid-cols-2 gap-2 mb-3">
-                <MiniStat
-                  label="Seu amigo tem e você falta"
-                  value={friendCanGive.length}
-                />
-                <MiniStat
-                  label="Você tem e ele não listou"
-                  value={iCanGive.length}
-                />
-              </div>
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  <MiniStat
+                    label="Seu amigo tem e você falta"
+                    value={friendCanGive.length}
+                  />
+                  <MiniStat
+                    label={
+                      friendProfile.source === "share"
+                        ? "Você tem e a pessoa precisa"
+                        : "Você tem e ele não listou"
+                    }
+                    value={iCanGive.length}
+                  />
+                </div>
 
               {suggestedSwaps.length > 0 ? (
                 <div className="space-y-2">
@@ -279,6 +347,7 @@ export function Duplicates() {
               )}
             </div>
           )}
+          </div>
         </div>
 
         <div ref={exportRef} className="album-strip rounded-xl p-4">
@@ -380,6 +449,97 @@ function countCodes(codes: string[]): Map<string, number> {
     counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
   }
   return counts;
+}
+
+function createTradeShareCode(
+  statuses: Record<string, string>,
+  duplicateCounts: Map<string, number>,
+): string {
+  const ownedBits = new Uint8Array(Math.ceil(ALL_STICKER_CODES.length / 8));
+  for (const [code, status] of Object.entries(statuses)) {
+    if (status !== "owned" && status !== "duplicate") continue;
+    const index = STICKER_INDEX_BY_CODE.get(code);
+    if (index === undefined) continue;
+    ownedBits[Math.floor(index / 8)] |= 1 << index % 8;
+  }
+  const duplicates = [...duplicateCounts.entries()]
+    .map(([code, count]) => [STICKER_INDEX_BY_CODE.get(code), count] as const)
+    .filter((item): item is [number, number] => item[0] !== undefined)
+    .sort(([a], [b]) => a - b);
+  const payload = JSON.stringify({
+    v: 1,
+    o: encodeBytesAsBase64Url(ownedBits),
+    d: duplicates,
+  });
+  return `ALBUM26:${encodeBase64Url(payload)}`;
+}
+
+function parseSharedTradeProfile(text: string): TradeProfile | null {
+  const match = text.match(/ALBUM26:([A-Za-z0-9_-]+)/);
+  if (!match) return null;
+
+  try {
+    const payload = JSON.parse(decodeBase64Url(match[1])) as {
+      v?: number;
+      o?: unknown;
+      d?: unknown;
+    };
+    if (payload.v !== 1) return null;
+
+    const owned = new Set<string>();
+    if (typeof payload.o === "string") {
+      const ownedBits = decodeBase64UrlAsBytes(payload.o);
+      for (let index = 0; index < ALL_STICKER_CODES.length; index += 1) {
+        const byte = ownedBits[Math.floor(index / 8)];
+        if (byte & (1 << index % 8)) owned.add(ALL_STICKER_CODES[index]);
+      }
+    }
+
+    const duplicateCounts = new Map<string, number>();
+    if (Array.isArray(payload.d)) {
+      for (const item of payload.d) {
+        if (!Array.isArray(item)) continue;
+        const [rawIndex, rawCount] = item;
+        const index = Number(rawIndex);
+        const count = Number(rawCount);
+        const code = ALL_STICKER_CODES[index];
+        if (!code || !Number.isFinite(count)) continue;
+        duplicateCounts.set(code, Math.max(1, Math.floor(count)));
+        owned.add(code);
+      }
+    }
+
+    return { owned, duplicateCounts, source: "share" };
+  } catch {
+    return null;
+  }
+}
+
+function encodeBase64Url(value: string): string {
+  return encodeBytesAsBase64Url(new TextEncoder().encode(value));
+}
+
+function encodeBytesAsBase64Url(bytes: Uint8Array): string {
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+}
+
+function decodeBase64Url(value: string): string {
+  return new TextDecoder().decode(decodeBase64UrlAsBytes(value));
+}
+
+function decodeBase64UrlAsBytes(value: string): Uint8Array {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized.padEnd(
+    normalized.length + ((4 - (normalized.length % 4)) % 4),
+    "=",
+  );
+  const binary = atob(padded);
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
 
 function formatSwapSuggestion(
