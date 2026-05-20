@@ -30,6 +30,11 @@ interface TradeProfile {
   source: "share" | "text" | "ai";
 }
 
+interface SwapAction {
+  give: string;
+  receive: string;
+}
+
 export function Duplicates() {
   const { statuses, dupCounts, apiKey, decrementDup, setStatus } =
     useCollection();
@@ -63,6 +68,7 @@ export function Duplicates() {
       g.stickers.map((s) => [s.code, Math.max(0, s.count - 1)] as const),
     ),
   );
+  const incomingTrade = parseTradeApplicationCode(friendInput);
   const localFriendDuplicateCounts = parseDuplicateText(friendInput);
   const sharedProfile = parseSharedTradeProfile(friendInput);
   const friendProfile: TradeProfile =
@@ -143,6 +149,16 @@ export function Duplicates() {
     }
   }
 
+  async function handleCopySwapForFriend() {
+    if (!suggestedSwaps.length) return;
+    try {
+      await copyTextToClipboard(formatSwapSuggestionForFriend(suggestedSwaps));
+      showToast("Troca para o amigo copiada.");
+    } catch {
+      showToast("Não foi possível copiar. Tente novamente.");
+    }
+  }
+
   function handleAutoExchange() {
     if (!suggestedSwaps.length) return;
     for (const swap of suggestedSwaps) {
@@ -152,6 +168,17 @@ export function Duplicates() {
     setAiParsedDuplicates(null);
     setFriendInput("");
     showToast(`${suggestedSwaps.length} troca(s) aplicadas ao álbum.`);
+  }
+
+  function handleApplyIncomingTrade() {
+    if (!incomingTrade?.length) return;
+    for (const swap of incomingTrade) {
+      decrementDup(swap.give);
+      setStatus(swap.receive, "owned");
+    }
+    setAiParsedDuplicates(null);
+    setFriendInput("");
+    showToast(`${incomingTrade.length} troca(s) aplicadas ao álbum.`);
   }
 
   if (groups.length === 0) {
@@ -240,7 +267,46 @@ export function Duplicates() {
               className="w-full h-28 album-control rounded-xl px-3 py-2.5 text-base text-text placeholder:text-muted outline-none focus:border-gold/60 resize-none transition-colors"
             />
 
-            {friendInput.trim() && (
+            {friendInput.trim() && incomingTrade && (
+              <div className="mt-3">
+                <div className="mb-3 rounded-xl border border-owned/25 bg-owned/10 px-3 py-2">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-owned">
+                    Troca recebida
+                  </p>
+                  <p className="mt-0.5 text-xs font-semibold text-text/75">
+                    {incomingTrade.length} troca(s) pronta(s) para aplicar no
+                    seu álbum
+                  </p>
+                </div>
+
+                <div className="mb-3 space-y-2">
+                  {incomingTrade.map(({ give, receive }) => (
+                    <div
+                      key={`${give}-${receive}`}
+                      className="flex items-center gap-2 rounded-xl border border-white/10 bg-bg/70 px-3 py-2"
+                    >
+                      <span className="text-xs text-muted">Você dá</span>
+                      <span className="font-bold text-duplicate text-sm">
+                        {give}
+                      </span>
+                      <span className="text-xs text-muted">e recebe</span>
+                      <span className="font-bold text-owned text-sm">
+                        {receive}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  onClick={handleApplyIncomingTrade}
+                  className="chip-press w-full bg-owned text-white text-xs font-black rounded-xl py-3"
+                >
+                  Aplicar troca recebida
+                </button>
+              </div>
+            )}
+
+            {friendInput.trim() && !incomingTrade && (
               <div className="mt-3">
                 {friendProfile.source !== "share" && (
                   <button
@@ -324,14 +390,10 @@ export function Duplicates() {
                     </div>
                   ))}
                   <button
-                    onClick={() =>
-                      navigator.clipboard.writeText(
-                        formatSwapSuggestion(suggestedSwaps),
-                      )
-                    }
+                    onClick={handleCopySwapForFriend}
                     className="chip-press w-full bg-owned/15 border border-owned/30 text-owned text-xs font-black rounded-xl py-2.5"
                   >
-                    Copiar sugestão
+                    Copiar troca para amigo
                   </button>
                   <button
                     onClick={handleAutoExchange}
@@ -515,6 +577,45 @@ function parseSharedTradeProfile(text: string): TradeProfile | null {
   }
 }
 
+function createTradeApplicationCode(swaps: SwapAction[]): string {
+  const payloadSwaps = swaps
+    .map((swap) => {
+      const giveIndex = STICKER_INDEX_BY_CODE.get(swap.receive);
+      const receiveIndex = STICKER_INDEX_BY_CODE.get(swap.give);
+      if (giveIndex === undefined || receiveIndex === undefined) return null;
+      return [giveIndex, receiveIndex];
+    })
+    .filter((swap): swap is [number, number] => Boolean(swap));
+  const payload = JSON.stringify({ v: 1, s: payloadSwaps });
+  return `ALBUM26-TROCA:${encodeBase64Url(payload)}`;
+}
+
+function parseTradeApplicationCode(text: string): SwapAction[] | null {
+  const match = text.match(/ALBUM26-TROCA:([A-Za-z0-9_-]+)/);
+  if (!match) return null;
+
+  try {
+    const payload = JSON.parse(decodeBase64Url(match[1])) as {
+      v?: number;
+      s?: unknown;
+    };
+    if (payload.v !== 1 || !Array.isArray(payload.s)) return null;
+
+    const swaps: SwapAction[] = [];
+    for (const item of payload.s) {
+      if (!Array.isArray(item)) continue;
+      const [rawGiveIndex, rawReceiveIndex] = item;
+      const give = ALL_STICKER_CODES[Number(rawGiveIndex)];
+      const receive = ALL_STICKER_CODES[Number(rawReceiveIndex)];
+      if (!give || !receive) continue;
+      swaps.push({ give, receive });
+    }
+    return swaps.length ? swaps : null;
+  } catch {
+    return null;
+  }
+}
+
 function encodeBase64Url(value: string): string {
   return encodeBytesAsBase64Url(new TextEncoder().encode(value));
 }
@@ -542,15 +643,20 @@ function decodeBase64UrlAsBytes(value: string): Uint8Array {
   return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
 
-function formatSwapSuggestion(
-  swaps: { give: string; receive: string }[],
-): string {
+function formatSwapSuggestionForFriend(swaps: SwapAction[]): string {
   const total = swaps.length;
-  const header = `Sugestão de troca: ${total} figurinha${total === 1 ? "" : "s"} por ${total} figurinha${total === 1 ? "" : "s"}`;
+  const header = `Troca combinada: ${total} figurinha${total === 1 ? "" : "s"} por ${total} figurinha${total === 1 ? "" : "s"}`;
   const lines = swaps.map(
-    (s) => `Eu te dou ${s.give} e você me dá ${s.receive}`,
+    (s) => `Você me dá ${s.receive} e recebe ${s.give}`,
   );
-  return [header, "", ...lines].join("\n");
+  return [
+    header,
+    "",
+    ...lines,
+    "",
+    "Cole este código no app para aplicar no seu álbum:",
+    createTradeApplicationCode(swaps),
+  ].join("\n");
 }
 
 async function copyTextToClipboard(text: string): Promise<void> {
