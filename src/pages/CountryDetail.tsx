@@ -108,12 +108,19 @@ export function CountryDetail() {
       ? COUNTRIES[countryIndex + 1]
       : undefined;
 
-  const emblemSticker = country.stickers.find((s) => s.number === 1);
-  const teamPhotoSticker = country.stickers.find((s) => s.number === 13);
-  const playerStickers = country.stickers.filter(
-    (s) => s.number !== 1 && s.number !== 13,
+  const isTeamCountry = country.group !== "Extras";
+  const emblemSticker = isTeamCountry
+    ? country.stickers.find((s) => s.number === 1)
+    : undefined;
+  const teamPhotoSticker = isTeamCountry
+    ? country.stickers.find((s) => s.number === 13)
+    : undefined;
+  const playerStickers = isTeamCountry
+    ? country.stickers.filter((s) => s.number !== 1 && s.number !== 13)
+    : country.stickers;
+  const showAlbumHero = Boolean(
+    isTeamCountry && (emblemSticker?.image || teamPhotoSticker?.image),
   );
-  const showAlbumHero = Boolean(emblemSticker?.image || teamPhotoSticker?.image);
 
   return (
     <div className="album-page flex flex-1 flex-col min-h-0">
