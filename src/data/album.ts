@@ -201,6 +201,7 @@ function makeSpecialStickers(): StickerDef[] {
 function makeFwcStickers(): StickerDef[] {
   return Array.from({ length: 19 }, (_, i) => ({
     number: i + 1,
+    code: `FWC ${i + 1}`,
     label: `FWC ${i + 1}`,
   }));
 }
