@@ -52,7 +52,8 @@ export function Countries() {
 
   return (
     <div className="scroll-area album-page flex-1">
-      <div className="sticky top-0 z-10 bg-bg/95 px-4 pb-4 pt-5 shadow-[0_12px_24px_rgba(0,0,0,0.24)] backdrop-blur space-y-3">
+      <div className="sticky top-0 z-10 bg-bg/95 shadow-[0_12px_24px_rgba(0,0,0,0.24)] backdrop-blur">
+        <div className="page-container space-y-3 pb-4 pt-5">
         <div className="app-header px-0 py-0">
           <p className="app-header-kicker">Álbum Copa 2026</p>
           <div className="flex items-end justify-between gap-3">
@@ -104,9 +105,10 @@ export function Countries() {
             className="w-full album-control rounded-xl pl-9 pr-4 py-3 text-sm font-medium text-text placeholder:text-muted outline-none focus:border-gold/60 transition-colors"
           />
         </div>
+        </div>
       </div>
 
-      <div className="px-4 pb-16 pt-4 space-y-7">
+      <div className="page-container space-y-7 pb-16 pt-4">
         {view === "group"
           ? GROUPS.map((group) => {
               const countries = filtered.filter((c) => c.group === group);
@@ -116,7 +118,7 @@ export function Countries() {
                   <h2 className="album-section-label mb-3">
                     {group === "Extras" ? "Extras" : `Grupo ${group}`}
                   </h2>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-4 xl:grid-cols-5">
                     {countries.map((country) => (
                       <CountryCard key={country.code} country={country} />
                     ))}
@@ -134,7 +136,7 @@ export function Countries() {
                   <h2 className="album-section-label mb-3">
                     {CONF_LABELS[conf]}
                   </h2>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-4 xl:grid-cols-5">
                     {countries.map((country) => (
                       <CountryCard key={country.code} country={country} />
                     ))}
