@@ -149,7 +149,8 @@ export function Scanner() {
         </div>
       )}
 
-      <div className="flex-none px-4 pt-5 pb-3">
+      <div className="flex-none border-b border-border bg-bg/95 shadow-[0_12px_24px_rgba(0,0,0,0.12)]">
+        <div className="page-container py-5">
         <div className="app-header px-0 py-0">
           <p className="app-header-kicker">Scanner</p>
           <h1 className="app-header-title">Escanear</h1>
@@ -157,11 +158,13 @@ export function Scanner() {
             Aponte a câmera para suas figurinhas
           </p>
         </div>
+        </div>
       </div>
 
-      <div className="scroll-area flex-1 px-4 pb-4">
+      <div className="scroll-area flex-1 pb-4">
+        <div className="page-container max-w-2xl">
         <div className="space-y-4">
-          <div className="relative overflow-hidden rounded-2xl border border-border bg-black aspect-[3/4]">
+          <div className="relative aspect-[3/4] overflow-hidden rounded-2xl border border-border bg-black md:aspect-[4/3] lg:max-h-[min(70vh,720px)] lg:aspect-auto lg:min-h-[420px]">
             <video
               ref={videoRef}
               playsInline
@@ -282,6 +285,7 @@ export function Scanner() {
               Nenhum código detectado. Tente uma captura mais clara.
             </p>
           )}
+        </div>
         </div>
       </div>
     </div>

@@ -202,7 +202,8 @@ export function Duplicates() {
         </div>
       )}
 
-      <div className="flex-none px-4 pt-5 pb-3">
+      <div className="flex-none border-b border-border bg-bg/95 shadow-[0_12px_24px_rgba(0,0,0,0.2)]">
+        <div className="page-container py-5">
         <div className="app-header px-0 py-0">
           <p className="app-header-kicker">Área de trocas</p>
           <div className="mt-1 flex items-end justify-between gap-3">
@@ -217,10 +218,12 @@ export function Duplicates() {
             </span>
           </div>
         </div>
+        </div>
       </div>
 
-      <div className="scroll-area flex-1 px-4 pb-4">
-        <div className="mb-4 grid gap-3">
+      <div className="scroll-area flex-1 pb-4">
+        <div className="page-container lg:grid lg:grid-cols-2 lg:items-start lg:gap-6">
+        <div className="mb-4 grid gap-3 lg:mb-0">
           <div className="sticker-slot rounded-xl p-4">
             <div className="mb-3 flex items-start gap-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-duplicate/15 text-duplicate">
@@ -412,7 +415,7 @@ export function Duplicates() {
           </div>
         </div>
 
-        <div ref={exportRef} className="album-strip rounded-xl p-4">
+        <div ref={exportRef} className="album-strip rounded-xl p-4 lg:sticky lg:top-4">
           <div className="flex items-center gap-2 mb-4">
             <Trophy size={22} className="text-gold" />
             <div>
@@ -453,6 +456,7 @@ export function Duplicates() {
               </div>
             ))}
           </div>
+        </div>
         </div>
       </div>
     </div>
