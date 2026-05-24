@@ -402,8 +402,10 @@ select {
         transform 0.1s ease,
         background-color 0.15s ease;
 }
-.chip-press:active {
-    transform: scale(0.93);
+@media (hover: hover) and (pointer: fine) {
+    .chip-press:active {
+        transform: scale(0.93);
+    }
 }
 
 .sticker-hold-progress {
