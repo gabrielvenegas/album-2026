@@ -11,29 +11,18 @@ import { COUNTRIES, getStickerCode } from "@/data/album";
 import { useCollection } from "@/store/useCollection";
 import { formatDuplicatesAsText } from "@/lib/export";
 import { parseDuplicateListWithAi } from "@/lib/ai";
-
-const VALID_STICKER_CODES = new Set(
-  COUNTRIES.flatMap((country) =>
-    country.stickers.map((sticker) => getStickerCode(country.code, sticker)),
-  ),
-);
-const ALL_STICKER_CODES = COUNTRIES.flatMap((country) =>
-  country.stickers.map((sticker) => getStickerCode(country.code, sticker)),
-);
-const STICKER_INDEX_BY_CODE = new Map(
-  ALL_STICKER_CODES.map((code, index) => [code, index] as const),
-);
-
-interface TradeProfile {
-  owned: Set<string>;
-  duplicateCounts: Map<string, number>;
-  source: "share" | "text" | "ai";
-}
-
-interface SwapAction {
-  give: string;
-  receive: string;
-}
+import {
+  buildSwapPlan,
+  countCodes,
+  createTradeShareCode,
+  formatSwapSuggestionForFriend,
+  parseDuplicateText,
+  parseSharedTradeProfile,
+  parseTradeApplicationCode,
+  VALID_STICKER_CODES,
+  type SwapAction,
+  type TradeProfile,
+} from "@/lib/trade";
 
 export function Duplicates() {
   const { statuses, dupCounts, apiKey, decrementDup, setStatus } =
@@ -68,6 +57,7 @@ export function Duplicates() {
       g.stickers.map((s) => [s.code, Math.max(0, s.count - 1)] as const),
     ),
   );
+  const myDuplicateCodes = [...myDuplicateCounts.keys()];
   const incomingTrade = parseTradeApplicationCode(friendInput);
   const localFriendDuplicateCounts = parseDuplicateText(friendInput);
   const sharedProfile = parseSharedTradeProfile(friendInput);
@@ -81,18 +71,16 @@ export function Duplicates() {
         };
   const friendDuplicateCounts = friendProfile.duplicateCounts;
   const friendDuplicateCodes = [...friendDuplicateCounts.keys()];
+  const exactTradeMode = friendProfile.source === "share";
   const friendCanGive = friendDuplicateCodes.filter(
     (code) => !hasSticker(code),
   );
-  const iCanGive = [...myDuplicateCounts.keys()].filter(
-    (code) =>
-      friendProfile.source === "share"
-        ? !friendProfile.owned.has(code)
-        : !friendDuplicateCounts.has(code),
-  );
-  const suggestedSwaps = friendCanGive
-    .slice(0, iCanGive.length)
-    .map((receive, i) => ({ receive, give: iCanGive[i] }));
+  const iCanGive = exactTradeMode
+    ? myDuplicateCodes.filter((code) => !friendProfile.owned.has(code))
+    : [];
+  const suggestedSwaps = exactTradeMode
+    ? buildSwapPlan(iCanGive, friendCanGive)
+    : [];
 
   function showToast(msg: string) {
     setToast(msg);
@@ -112,7 +100,7 @@ export function Duplicates() {
       "",
       duplicateText,
       "",
-      "Código para comparar no app:",
+      "Código do meu álbum para comparação exata no app:",
       createTradeShareCode(statuses, myDuplicateCounts),
     ].join("\n");
 
@@ -161,24 +149,26 @@ export function Duplicates() {
 
   function handleAutoExchange() {
     if (!suggestedSwaps.length) return;
-    for (const swap of suggestedSwaps) {
-      decrementDup(swap.give);
-      setStatus(swap.receive, "owned");
+    const applied = applySwaps(suggestedSwaps, statuses, decrementDup, setStatus);
+    if (applied === 0) {
+      showToast("Nenhuma troca válida para aplicar.");
+      return;
     }
     setAiParsedDuplicates(null);
     setFriendInput("");
-    showToast(`${suggestedSwaps.length} troca(s) aplicadas ao álbum.`);
+    showToast(`${applied} troca(s) aplicadas ao álbum.`);
   }
 
   function handleApplyIncomingTrade() {
     if (!incomingTrade?.length) return;
-    for (const swap of incomingTrade) {
-      decrementDup(swap.give);
-      setStatus(swap.receive, "owned");
+    const applied = applySwaps(incomingTrade, statuses, decrementDup, setStatus);
+    if (applied === 0) {
+      showToast("Nenhuma troca válida encontrada nesse código.");
+      return;
     }
     setAiParsedDuplicates(null);
     setFriendInput("");
-    showToast(`${incomingTrade.length} troca(s) aplicadas ao álbum.`);
+    showToast(`${applied} troca(s) aplicadas ao álbum.`);
   }
 
   if (groups.length === 0) {
@@ -232,8 +222,8 @@ export function Duplicates() {
               <div className="min-w-0">
                 <p className="album-section-label">1. Compartilhe sua lista</p>
                 <p className="mt-1 text-xs font-semibold leading-relaxed text-muted">
-                  O texto inclui suas repetidas e um código compacto com as
-                  figurinhas que você já tem.
+                  O texto inclui suas repetidas e um código compacto que deixa a
+                  comparação exata no outro app.
                 </p>
               </div>
             </div>
@@ -254,8 +244,8 @@ export function Duplicates() {
               <div className="min-w-0">
                 <p className="album-section-label">2. Compare com alguém</p>
                 <p className="mt-1 text-xs font-semibold leading-relaxed text-muted">
-                  Cole o texto do app para uma comparação completa, ou uma lista
-                  simples de repetidas para uma comparação rápida.
+                  Cole o código do álbum compartilhado para uma comparação
+                  completa. Lista simples de repetidas vira só leitura parcial.
                 </p>
               </div>
             </div>
@@ -336,9 +326,15 @@ export function Duplicates() {
                     {friendDuplicateCounts.size} tipo(s) de repetida(s)
                     encontrados
                   </p>
-                  {friendProfile.source === "share" && (
+                  {exactTradeMode ? (
                     <p className="mt-1 text-[10px] text-muted">
-                      A comparação também considera o que a outra pessoa já tem.
+                      A comparação usa o álbum compartilhado, então a troca
+                      automática fica igual nos dois lados.
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-[10px] text-muted">
+                      Para gerar uma troca automática, cole o código
+                      compartilhado do colega.
                     </p>
                   )}
                   {localFriendDuplicateCounts.size > 0 &&
@@ -362,54 +358,65 @@ export function Duplicates() {
                     label="Seu amigo tem e você falta"
                     value={friendCanGive.length}
                   />
-                  <MiniStat
-                    label={
-                      friendProfile.source === "share"
-                        ? "Você tem e a pessoa precisa"
-                        : "Você tem e ele não listou"
-                    }
-                    value={iCanGive.length}
-                  />
+                  {exactTradeMode ? (
+                    <MiniStat
+                      label="Você tem e a pessoa precisa"
+                      value={iCanGive.length}
+                    />
+                  ) : (
+                    <div className="sticker-tile rounded-xl px-3 py-2">
+                      <p className="text-sm font-black text-text">Parcial</p>
+                      <p className="text-[10px] font-bold text-muted leading-tight">
+                        Troca automática exige o código compartilhado.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
-              {suggestedSwaps.length > 0 ? (
-                <div className="space-y-2">
-                  <p className="text-xs font-black text-text">
-                    Sugestão automática:
-                  </p>
-                  {suggestedSwaps.map(({ receive, give }) => (
-                    <div
-                      key={`${give}-${receive}`}
-                      className="flex items-center gap-2 rounded-xl border border-white/10 bg-bg/70 px-3 py-2"
-                    >
-                      <span className="text-xs text-muted">Você dá</span>
-                      <span className="font-bold text-duplicate text-sm">
-                        {give}
-                      </span>
-                      <span className="text-xs text-muted">e recebe</span>
-                      <span className="font-bold text-owned text-sm">
-                        {receive}
-                      </span>
+                {exactTradeMode ? (
+                  suggestedSwaps.length > 0 ? (
+                    <div className="space-y-2">
+                      <p className="text-xs font-black text-text">
+                        Sugestão automática:
+                      </p>
+                      {suggestedSwaps.map(({ receive, give }) => (
+                        <div
+                          key={`${give}-${receive}`}
+                          className="flex items-center gap-2 rounded-xl border border-white/10 bg-bg/70 px-3 py-2"
+                        >
+                          <span className="text-xs text-muted">Você dá</span>
+                          <span className="font-bold text-duplicate text-sm">
+                            {give}
+                          </span>
+                          <span className="text-xs text-muted">e recebe</span>
+                          <span className="font-bold text-owned text-sm">
+                            {receive}
+                          </span>
+                        </div>
+                      ))}
+                      <button
+                        onClick={handleCopySwapForFriend}
+                        className="chip-press w-full bg-owned/15 border border-owned/30 text-owned text-xs font-black rounded-xl py-2.5"
+                      >
+                        Copiar troca para amigo
+                      </button>
+                      <button
+                        onClick={handleAutoExchange}
+                        className="chip-press w-full bg-owned text-white text-xs font-black rounded-xl py-3"
+                      >
+                        Aplicar troca no álbum
+                      </button>
                     </div>
-                  ))}
-                  <button
-                    onClick={handleCopySwapForFriend}
-                    className="chip-press w-full bg-owned/15 border border-owned/30 text-owned text-xs font-black rounded-xl py-2.5"
-                  >
-                    Copiar troca para amigo
-                  </button>
-                  <button
-                    onClick={handleAutoExchange}
-                    className="chip-press w-full bg-owned text-white text-xs font-black rounded-xl py-3"
-                  >
-                    Aplicar troca no álbum
-                  </button>
-                </div>
-              ) : (
-                <p className="text-xs text-muted text-center py-2">
-                  Nenhuma troca direta encontrada com essa lista.
-                </p>
-              )}
+                  ) : (
+                    <p className="text-xs text-muted text-center py-2">
+                      Nenhuma troca direta encontrada com esse álbum.
+                    </p>
+                  )
+                ) : (
+                  <p className="text-xs text-muted text-center py-2">
+                    Troca automática disponível só com o código compartilhado.
+                  </p>
+                )}
             </div>
           )}
           </div>
@@ -467,200 +474,40 @@ export function Duplicates() {
   }
 }
 
-function parseDuplicateText(text: string): Map<string, number> {
-  const counts = new Map<string, number>();
-  const matches =
-    text
-      .toUpperCase()
-      .match(
-        /\b(?:00|CC\s*[-#]?\s*\d{1,2}|[A-Z]{3}\s*[-#]?\s*\d{1,2})(?:\((\d+)X\)|\s+X(\d+)|X(\d+))?/g,
-      ) ?? [];
-
-  for (const raw of matches) {
-    const codeMatch = raw.match(
-      /\b(00|CC\s*[-#]?\s*\d{1,2}|[A-Z]{3}\s*[-#]?\s*\d{1,2})\b/,
-    );
-    if (!codeMatch) continue;
-    const code = normalizeCode(codeMatch[1]);
-    if (!VALID_STICKER_CODES.has(code)) continue;
-    const countMatch = raw.match(/\((\d+)X\)|\s+X(\d+)|X(\d+)/);
-    const count = countMatch
-      ? Number(countMatch[1] ?? countMatch[2] ?? countMatch[3])
-      : 1;
-    counts.set(code, (counts.get(code) ?? 0) + count);
-  }
-
-  return counts;
-}
-
-function normalizeCode(raw: string): string {
-  const code = raw
-    .toUpperCase()
-    .replace(/\s+/g, " ")
-    .replace(/[-#]/g, "")
-    .trim();
-  if (code === "00") return code;
-  const cc = code.match(/^CC\s*(\d{1,2})$/);
-  if (cc) return `CC${Number(cc[1])}`;
-  const parts = code.match(/^([A-Z]{3})\s*(\d{1,2})$/);
-  if (parts) return `${parts[1]} ${Number(parts[2])}`;
-  return code;
-}
-
-function countCodes(codes: string[]): Map<string, number> {
-  const counts = new Map<string, number>();
-  for (const code of codes) {
-    const normalized = normalizeCode(code);
-    if (!VALID_STICKER_CODES.has(normalized)) continue;
-    counts.set(normalized, (counts.get(normalized) ?? 0) + 1);
-  }
-  return counts;
-}
-
-function createTradeShareCode(
+function applySwaps(
+  swaps: SwapAction[],
   statuses: Record<string, string>,
-  duplicateCounts: Map<string, number>,
-): string {
-  const ownedBits = new Uint8Array(Math.ceil(ALL_STICKER_CODES.length / 8));
-  for (const [code, status] of Object.entries(statuses)) {
-    if (status !== "owned" && status !== "duplicate") continue;
-    const index = STICKER_INDEX_BY_CODE.get(code);
-    if (index === undefined) continue;
-    ownedBits[Math.floor(index / 8)] |= 1 << index % 8;
-  }
-  const duplicates = [...duplicateCounts.entries()]
-    .map(([code, count]) => [STICKER_INDEX_BY_CODE.get(code), count] as const)
-    .filter((item): item is [number, number] => item[0] !== undefined)
-    .sort(([a], [b]) => a - b);
-  const payload = JSON.stringify({
-    v: 1,
-    o: encodeBytesAsBase64Url(ownedBits),
-    d: duplicates,
-  });
-  return `ALBUM26:${encodeBase64Url(payload)}`;
-}
+  decrementDup: (code: string) => void,
+  setStatus: (code: string, status: "missing" | "owned" | "duplicate") => void,
+): number {
+  const appliedGives = new Set<string>();
+  const appliedReceives = new Set<string>();
+  const liveStatuses = { ...statuses };
+  let applied = 0;
 
-function parseSharedTradeProfile(text: string): TradeProfile | null {
-  const match = text.match(/ALBUM26:([A-Za-z0-9_-]+)/);
-  if (!match) return null;
-
-  try {
-    const payload = JSON.parse(decodeBase64Url(match[1])) as {
-      v?: number;
-      o?: unknown;
-      d?: unknown;
-    };
-    if (payload.v !== 1) return null;
-
-    const owned = new Set<string>();
-    if (typeof payload.o === "string") {
-      const ownedBits = decodeBase64UrlAsBytes(payload.o);
-      for (let index = 0; index < ALL_STICKER_CODES.length; index += 1) {
-        const byte = ownedBits[Math.floor(index / 8)];
-        if (byte & (1 << index % 8)) owned.add(ALL_STICKER_CODES[index]);
-      }
+  for (const swap of swaps) {
+    if (
+      appliedGives.has(swap.give) ||
+      appliedReceives.has(swap.receive) ||
+      swap.give === swap.receive ||
+      !VALID_STICKER_CODES.has(swap.give) ||
+      !VALID_STICKER_CODES.has(swap.receive) ||
+      liveStatuses[swap.give] !== "duplicate" ||
+      liveStatuses[swap.receive] !== "missing"
+    ) {
+      continue;
     }
 
-    const duplicateCounts = new Map<string, number>();
-    if (Array.isArray(payload.d)) {
-      for (const item of payload.d) {
-        if (!Array.isArray(item)) continue;
-        const [rawIndex, rawCount] = item;
-        const index = Number(rawIndex);
-        const count = Number(rawCount);
-        const code = ALL_STICKER_CODES[index];
-        if (!code || !Number.isFinite(count)) continue;
-        duplicateCounts.set(code, Math.max(1, Math.floor(count)));
-        owned.add(code);
-      }
-    }
-
-    return { owned, duplicateCounts, source: "share" };
-  } catch {
-    return null;
+    appliedGives.add(swap.give);
+    appliedReceives.add(swap.receive);
+    decrementDup(swap.give);
+    setStatus(swap.receive, "owned");
+    liveStatuses[swap.give] = "owned";
+    liveStatuses[swap.receive] = "owned";
+    applied += 1;
   }
-}
 
-function createTradeApplicationCode(swaps: SwapAction[]): string {
-  const payloadSwaps = swaps
-    .map((swap) => {
-      const giveIndex = STICKER_INDEX_BY_CODE.get(swap.receive);
-      const receiveIndex = STICKER_INDEX_BY_CODE.get(swap.give);
-      if (giveIndex === undefined || receiveIndex === undefined) return null;
-      return [giveIndex, receiveIndex];
-    })
-    .filter((swap): swap is [number, number] => Boolean(swap));
-  const payload = JSON.stringify({ v: 1, s: payloadSwaps });
-  return `ALBUM26-TROCA:${encodeBase64Url(payload)}`;
-}
-
-function parseTradeApplicationCode(text: string): SwapAction[] | null {
-  const match = text.match(/ALBUM26-TROCA:([A-Za-z0-9_-]+)/);
-  if (!match) return null;
-
-  try {
-    const payload = JSON.parse(decodeBase64Url(match[1])) as {
-      v?: number;
-      s?: unknown;
-    };
-    if (payload.v !== 1 || !Array.isArray(payload.s)) return null;
-
-    const swaps: SwapAction[] = [];
-    for (const item of payload.s) {
-      if (!Array.isArray(item)) continue;
-      const [rawGiveIndex, rawReceiveIndex] = item;
-      const give = ALL_STICKER_CODES[Number(rawGiveIndex)];
-      const receive = ALL_STICKER_CODES[Number(rawReceiveIndex)];
-      if (!give || !receive) continue;
-      swaps.push({ give, receive });
-    }
-    return swaps.length ? swaps : null;
-  } catch {
-    return null;
-  }
-}
-
-function encodeBase64Url(value: string): string {
-  return encodeBytesAsBase64Url(new TextEncoder().encode(value));
-}
-
-function encodeBytesAsBase64Url(bytes: Uint8Array): string {
-  let binary = "";
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/g, "");
-}
-
-function decodeBase64Url(value: string): string {
-  return new TextDecoder().decode(decodeBase64UrlAsBytes(value));
-}
-
-function decodeBase64UrlAsBytes(value: string): Uint8Array {
-  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
-  const padded = normalized.padEnd(
-    normalized.length + ((4 - (normalized.length % 4)) % 4),
-    "=",
-  );
-  const binary = atob(padded);
-  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
-}
-
-function formatSwapSuggestionForFriend(swaps: SwapAction[]): string {
-  const total = swaps.length;
-  const header = `Troca combinada: ${total} figurinha${total === 1 ? "" : "s"} por ${total} figurinha${total === 1 ? "" : "s"}`;
-  const lines = swaps.map(
-    (s) => `Você me dá ${s.receive} e recebe ${s.give}`,
-  );
-  return [
-    header,
-    "",
-    ...lines,
-    "",
-    "Cole este código no app para aplicar no seu álbum:",
-    createTradeApplicationCode(swaps),
-  ].join("\n");
+  return applied;
 }
 
 async function copyTextToClipboard(text: string): Promise<void> {
